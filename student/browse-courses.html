@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Courses — PassUp.LK</title>
+    <link rel="stylesheet" href="/assets/css/base.css">
+    <link rel="stylesheet" href="/assets/css/components.css">
+    <link rel="stylesheet" href="/assets/css/layout.css">
+    <link rel="stylesheet" href="/assets/css/pages/dashboard.css">
+</head>
+
+<body>
+    <script type="module">
+        import { requireStudent } from '/assets/js/utils/guards.js';
+        import { renderAppShell } from '/assets/js/components/app-shell.js';
+        import { listPublishedCourses } from '/assets/js/services/courses.service.js';
+        import { listSubjects } from '/assets/js/services/subjects.service.js';
+        import { courseCardHTML } from '/assets/js/components/course-card.js';
+        import { escapeHTML, renderEmptyState, renderErrorState, qsa } from '/assets/js/utils/dom.js';
+
+        const auth = await requireStudent();
+        if (!auth) throw new Error('redirecting');
+        const { profile } = auth;
+
+        const content = renderAppShell({ role: 'student', profile, activeHref: '/student/browse-courses.html', pageTitle: 'All Courses' });
+        content.innerHTML = `
+    <div class="page-head"><h1>All Courses</h1></div>
+    <div class="filter-bar" id="filterBar"></div>
+    <div class="grid grid-3" id="grid">${'<div class="skeleton" style="height:280px"></div>'.repeat(3)}</div>
+  `;
+
+        const grid = document.getElementById('grid');
+        const filterBar = document.getElementById('filterBar');
+        let activeFilter = '';
+
+        async function load() {
+            grid.innerHTML = '<div class="skeleton" style="height:280px"></div>'.repeat(3);
+            try {
+                const courses = await listPublishedCourses({ subjectSlug: activeFilter || null });
+                if (!courses.length) {
+                    return renderEmptyState(grid, { icon: '📚', title: 'No courses here yet', message: 'Check back soon — new courses are added regularly.' });
+                }
+                // Course cards link to the public course detail page by default —
+                // it already handles enroll / pending / approved / continue-learning
+                // states correctly for a logged-in student, so no need to duplicate
+                // that logic here.
+                grid.innerHTML = courses.map((c) => courseCardHTML(c, { ctaLabel: 'View & Enroll' })).join('');
+            } catch {
+                renderErrorState(grid, 'Could not load courses.');
+            }
+        }
+
+        try {
+            const subjects = await listSubjects();
+            filterBar.innerHTML = `
+      <button class="btn btn-dark btn-sm" data-filter="">All</button>
+      ${subjects.map((s) => `<button class="btn btn-outline btn-sm" data-filter="${escapeHTML(s.slug)}">${escapeHTML(s.name)}</button>`).join('')}
+    `;
+            qsa('[data-filter]', filterBar).forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    activeFilter = btn.dataset.filter;
+                    qsa('[data-filter]', filterBar).forEach((b) => b.classList.replace('btn-dark', 'btn-outline'));
+                    btn.classList.replace('btn-outline', 'btn-dark');
+                    load();
+                });
+            });
+        } catch {
+            // Filter bar is a non-essential enhancement — course list still loads without it.
+        }
+
+        load();
+    </script>
+</body>
+
+</html>

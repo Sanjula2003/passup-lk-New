@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Course — PassUp.LK</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+</head>
+
+<body>
+  <div id="site-header"></div>
+  <main>
+    <section class="container" style="padding-top:48px;padding-bottom:64px" id="courseRoot">
+      <div class="skeleton" style="height:320px;border-radius:22px"></div>
+    </section>
+  </main>
+  <div id="site-footer"></div>
+  <script type="module">
+    import { renderSiteHeader } from '/assets/js/components/site-header.js';
+    import { renderSiteFooter } from '/assets/js/components/site-footer.js';
+    import { supabase } from '/assets/js/config/supabase.js';
+    import { getPublicCurriculum, getCourseBySlug } from '/assets/js/services/courses.service.js';
+    import { getMyEnrollmentForCourse, requestEnrollment } from '/assets/js/services/enrollments.service.js';
+    import { formatCurrencyLKR } from '/assets/js/utils/formatters.js';
+    import { escapeHTML, renderErrorState } from '/assets/js/utils/dom.js';
+    import { toastSuccess, toastError } from '/assets/js/utils/toast.js';
+
+    renderSiteHeader(document.getElementById('site-header'), '/courses.html');
+    renderSiteFooter(document.getElementById('site-footer'));
+
+    const root = document.getElementById('courseRoot');
+    const slug = new URLSearchParams(window.location.search).get('slug');
+
+    async function init() {
+      if (!slug) return renderErrorState(root, 'No course specified.');
+      let course;
+      try {
+        course = await getCourseBySlug(slug);
+      } catch {
+        return renderErrorState(root, 'This course could not be found.');
+      }
+      // Uses the public-safe preview (titles + counts only, no video/pdf
+      // links) so anonymous and not-yet-enrolled visitors can see what's in
+      // the course. The real lesson content stays gated behind an approved
+      // enrollment — see student/course-player.html and docs/DATABASE.md.
+      const topics = await getPublicCurriculum(course.id).catch(() => []);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      let enrollment = null;
+      if (session) {
+        enrollment = await getMyEnrollmentForCourse(session.user.id, course.id).catch(() => null);
+      }
+
+      const topicCount = topics.length;
+      const lessonCount = topics.reduce((sum, t) => sum + (t.lessons?.length ?? 0), 0);
+
+      const ctaHTML = (() => {
+        if (!session) return `<a href="/login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}" class="btn btn-primary btn-block">Log In to Enroll</a>`;
+        if (!enrollment) return `<button class="btn btn-primary btn-block" id="enrollBtn">Enroll Now — ${formatCurrencyLKR(course.price)}</button>`;
+        if (enrollment.status === 'pending') return `<div class="badge badge-warning" style="width:100%;justify-content:center;padding:12px">Enrollment Pending Approval</div>`;
+        if (enrollment.status === 'approved') return `<a href="/student/course-player.html?courseId=${course.id}" class="btn btn-dark btn-block">Continue Learning</a>`;
+        if (enrollment.status === 'rejected') return `<div class="badge badge-danger" style="width:100%;justify-content:center;padding:12px">Enrollment Rejected — Contact Support</div>`;
+        return `<div class="badge badge-neutral" style="width:100%;justify-content:center;padding:12px">Enrollment Suspended</div>`;
+      })();
+
+      root.innerHTML = `
+      <div style="display:grid;gap:32px;grid-template-columns:1fr;" class="course-detail-grid">
+        <div>
+          <span class="badge badge-neutral">${escapeHTML(course.subjects?.name ?? '')}</span>
+          <h1 style="margin-top:12px">${escapeHTML(course.title)}</h1>
+          <p style="margin-top:12px;font-size:1.05rem">${escapeHTML(course.description ?? '')}</p>
+          <div style="display:flex;gap:20px;margin-top:20px;flex-wrap:wrap">
+            <span class="badge badge-info">${topicCount} topics</span>
+            <span class="badge badge-info">${lessonCount} lessons</span>
+          </div>
+
+          <h3 style="margin-top:40px">Curriculum</h3>
+          <div style="margin-top:16px" id="curriculumList">
+            ${topics.map((t) => `
+              <div class="card" style="margin-bottom:12px">
+                <div class="card-body" style="padding:16px 20px">
+                  <strong>${escapeHTML(t.title)}</strong>
+                  <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:4px">${(t.lessons ?? []).length} lessons</div>
+                </div>
+              </div>`).join('') || '<p>Curriculum will be published soon.</p>'}
+          </div>
+        </div>
+
+        <aside>
+          <div class="card card-body" style="position:sticky;top:96px">
+            <div class="course-card__thumb" style="border-radius:14px;margin-bottom:16px">
+              ${course.thumbnail_url ? `<img src="${escapeHTML(course.thumbnail_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:14px" />` : `<span>${escapeHTML(course.subjects?.name ?? 'Course')}</span>`}
+            </div>
+            <div style="font-size:1.75rem;font-weight:800;margin-bottom:16px">${formatCurrencyLKR(course.price)}</div>
+            ${ctaHTML}
+          </div>
+        </aside>
+      </div>
+      <style>@media(min-width:960px){.course-detail-grid{grid-template-columns:2fr 1fr}}</style>
+    `;
+
+      const enrollBtn = document.getElementById('enrollBtn');
+      if (enrollBtn) {
+        enrollBtn.addEventListener('click', async () => {
+          enrollBtn.disabled = true;
+          enrollBtn.textContent = 'Submitting…';
+          try {
+            await requestEnrollment({ studentId: session.user.id, courseId: course.id });
+            toastSuccess('Enrollment requested! Check Payment Instructions to complete it.');
+            window.location.href = '/student/payment-instructions.html';
+          } catch (err) {
+            toastError(err.message || 'Could not submit enrollment.');
+            enrollBtn.disabled = false;
+            enrollBtn.textContent = `Enroll Now — ${formatCurrencyLKR(course.price)}`;
+          }
+        });
+      }
+    }
+
+    init();
+  </script>
+</body>
+
+</html>

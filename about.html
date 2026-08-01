@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About Us — PassUp.LK</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+  <section class="section container" style="padding-top:64px">
+    <div class="section-head">
+      <h1>About PassUp.LK</h1>
+      <p>Anyone Can Pass — that's not a slogan, it's the whole reason this platform exists.</p>
+    </div>
+  </section>
+
+  <section class="container section" style="max-width:760px">
+    <h3>Our Mission</h3>
+    <p>PassUp.LK builds a premium Learning Management System for Sri Lankan ICT students, focused entirely on two syllabi: O/L ICT and A/L ICT. We believe every student deserves clear, structured, exam-focused teaching — not scattered YouTube videos and outdated notes.</p>
+    <h3 style="margin-top:32px">Our Guarantee</h3>
+    <p>If anyone fails even after following our program, we'll return 100% cashback. We only make that promise because the material and structure are built to work when followed properly.</p>
+    <h3 style="margin-top:32px">How Enrollment Works</h3>
+    <p>After signing up and browsing courses, you enroll and receive simple payment instructions. Once you send your payment slip via WhatsApp, our teacher personally verifies it and approves your access — usually within hours.</p>
+  </section>
+
+  <section class="container section" style="text-align:center">
+    <a href="/signup.html" class="btn btn-primary">Join PassUp.LK</a>
+  </section>
+</main>
+<div id="site-footer"></div>
+<script type="module">
+  import { renderSiteHeader } from '/assets/js/components/site-header.js';
+  import { renderSiteFooter } from '/assets/js/components/site-footer.js';
+  renderSiteHeader(document.getElementById('site-header'), '/about.html');
+  renderSiteFooter(document.getElementById('site-footer'));
+</script>
+</body>
+</html>

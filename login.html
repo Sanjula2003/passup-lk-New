@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In — PassUp.LK</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/pages/auth.css">
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-visual">
+    <a href="/index.html" class="brand" style="color:#fff"><span class="brand__mark"></span><span>PassUp<span style="color:var(--color-primary)">.LK</span></span></a>
+    <p class="auth-visual__quote">"Anyone Can Pass — with the right structure, guidance, and a guarantee behind it."</p>
+    <p style="color:#a3a3a3">100% Cashback Guarantee · O/L & A/L ICT</p>
+  </div>
+  <div class="auth-panel">
+    <div class="auth-card">
+      <div class="auth-card__head">
+        <h2>Welcome back</h2>
+        <p>Log in to continue your courses.</p>
+      </div>
+      <div id="verifiedNotice"></div>
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="email">Email</label>
+          <input class="input" type="email" id="email" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-group">
+            <input class="input" type="password" id="password" required>
+            <button type="button" class="input-group__action" id="togglePw" aria-label="Show password">👁</button>
+          </div>
+        </div>
+        <div style="text-align:right;margin-bottom:20px">
+          <a href="/forgot-password.html" style="font-size:0.85rem;font-weight:600">Forgot password?</a>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit" id="submitBtn">Log In</button>
+      </form>
+      <p class="auth-foot">Don't have an account? <a href="/signup.html">Sign up</a></p>
+    </div>
+  </div>
+</div>
+<script type="module">
+  import { signIn } from '/assets/js/services/auth.service.js';
+  import { redirectIfAuthenticated } from '/assets/js/utils/guards.js';
+  import { isValidEmail, isNonEmpty, applyFieldError, clearFieldError } from '/assets/js/utils/validators.js';
+  import { toastError, toastSuccess } from '/assets/js/utils/toast.js';
+
+  redirectIfAuthenticated();
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('verified') === '1') {
+    document.getElementById('verifiedNotice').innerHTML = `<div class="badge badge-success" style="width:100%;justify-content:center;padding:10px;margin-bottom:16px">Email verified — you can log in now.</div>`;
+  }
+  if (params.get('suspended') === '1') {
+    document.getElementById('verifiedNotice').innerHTML = `<div class="badge badge-danger" style="width:100%;justify-content:center;padding:10px;margin-bottom:16px">Your account has been suspended. Contact support.</div>`;
+  }
+
+  document.getElementById('togglePw').addEventListener('click', (e) => {
+    const input = document.getElementById('password');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email');
+    const password = document.getElementById('password');
+    [email, password].forEach(clearFieldError);
+    let valid = true;
+    if (!isValidEmail(email.value)) { applyFieldError(email, 'Enter a valid email.'); valid = false; }
+    if (!isNonEmpty(password.value)) { applyFieldError(password, 'Enter your password.'); valid = false; }
+    if (!valid) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = 'Logging in…';
+    try {
+      await signIn({ email: email.value.trim(), password: password.value });
+      toastSuccess('Welcome back!');
+      const redirect = params.get('redirect');
+      window.location.href = redirect || '/student/dashboard.html'; // guard on the target page re-routes teacher correctly
+    } catch (err) {
+      toastError(err.message.includes('Invalid') ? 'Incorrect email or password.' : err.message);
+      btn.disabled = false; btn.textContent = 'Log In';
+    }
+  });
+</script>
+</body>
+</html>

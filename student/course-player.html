@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Course Player — PassUp.LK</title>
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/layout.css">
+  <link rel="stylesheet" href="/assets/css/pages/player.css">
+</head>
+
+<body>
+  <script type="module">
+    import { requireStudent } from '/assets/js/utils/guards.js';
+    import { renderAppShell } from '/assets/js/components/app-shell.js';
+    import { getMyEnrollmentForCourse } from '/assets/js/services/enrollments.service.js';
+    import { getCourseWithCurriculum, getCourseBySlug } from '/assets/js/services/courses.service.js';
+    import { supabase } from '/assets/js/config/supabase.js';
+    import { getProgressForCourse, markLessonComplete, touchLessonWatched, computeCoursePercent } from '/assets/js/services/progress.service.js';
+    import { buildEmbedUrl } from '/assets/js/utils/youtube.js';
+    import { escapeHTML, renderErrorState } from '/assets/js/utils/dom.js';
+    import { toastSuccess, toastError } from '/assets/js/utils/toast.js';
+
+    const auth = await requireStudent();
+    if (!auth) throw new Error('redirecting');
+    const { session, profile } = auth;
+
+    const content = renderAppShell({ role: 'student', profile, activeHref: '/student/my-courses.html', pageTitle: 'Course Player' });
+    content.innerHTML = `<div class="skeleton" style="height:480px"></div>`;
+
+    const courseId = new URLSearchParams(window.location.search).get('courseId');
+    const lessonParam = new URLSearchParams(window.location.search).get('lessonId');
+
+    if (!courseId) { renderErrorState(content, 'No course specified.'); throw new Error('no course id'); }
+
+    let course, enrollment, allLessons, progressRows;
+
+    try {
+      enrollment = await getMyEnrollmentForCourse(session.user.id, courseId);
+      if (!enrollment || enrollment.status !== 'approved') {
+        content.innerHTML = `<div class="state-panel"><div class="state-panel__icon">🔒</div><h3>Access not available</h3><p>You need an approved enrollment to view this course.</p><a href="/student/payment-instructions.html" class="btn btn-primary" style="margin-top:16px">View Payment Instructions</a></div>`;
+        throw new Error('not enrolled');
+      }
+      course = await getCourseWithCurriculum(courseId);
+    } catch (err) {
+      if (err.message !== 'not enrolled') renderErrorState(content, 'Could not load this course.');
+      throw err;
+    }
+
+    allLessons = (course.topics ?? []).flatMap((t) => t.lessons ?? []).filter((l) => l.is_published);
+    progressRows = await getProgressForCourse(session.user.id, allLessons.map((l) => l.id)).catch(() => []);
+
+    let currentLesson = allLessons.find((l) => l.id === lessonParam) ?? allLessons[0];
+
+    function isDone(lessonId) {
+      return progressRows.some((p) => p.lesson_id === lessonId && p.is_completed);
+    }
+
+    function renderCurriculum() {
+      return (course.topics ?? []).map((t) => `
+      <div class="curriculum-topic">
+        <div class="curriculum-topic__title">${escapeHTML(t.title)}</div>
+        ${(t.lessons ?? []).filter((l) => l.is_published).map((l) => `
+          <div class="curriculum-lesson ${currentLesson?.id === l.id ? 'active' : ''}" data-lesson-id="${l.id}">
+            <div class="curriculum-lesson__check ${isDone(l.id) ? 'done' : ''}">${isDone(l.id) ? '✓' : ''}</div>
+            <div class="curriculum-lesson__title">${escapeHTML(l.title)}</div>
+          </div>`).join('')}
+      </div>`).join('');
+    }
+
+    function renderPlayer() {
+      if (!currentLesson) {
+        content.innerHTML = `<div class="state-panel"><h3>No lessons published yet</h3><p>Check back soon.</p></div>`;
+        return;
+      }
+      const percent = computeCoursePercent(allLessons, progressRows);
+      const idx = allLessons.findIndex((l) => l.id === currentLesson.id);
+      const prev = allLessons[idx - 1];
+      const next = allLessons[idx + 1];
+
+      content.innerHTML = `
+      <div style="margin-bottom:16px">
+        <h1 style="font-size:1.4rem">${escapeHTML(course.title)}</h1>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
+          <div class="progress-track" style="flex:1;max-width:280px"><div class="progress-fill" style="width:${percent}%"></div></div>
+          <span style="font-size:0.85rem;color:var(--text-secondary)">${percent}% complete</span>
+        </div>
+      </div>
+      <div class="player-layout">
+        <div>
+          <div class="video-frame">
+            <iframe id="ytFrame" src="${buildEmbedUrl(currentLesson.youtube_video_id)}"
+              title="${escapeHTML(currentLesson.title)}"
+              allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowfullscreen
+              referrerpolicy="strict-origin-when-cross-origin"></iframe>
+          </div>
+          <div class="lesson-toolbar">
+            <div>
+              <h3>${escapeHTML(currentLesson.title)}</h3>
+              <p style="font-size:0.9rem;margin-top:4px">${escapeHTML(currentLesson.description ?? '')}</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0">
+              ${currentLesson.pdf_url ? `<a href="${escapeHTML(currentLesson.pdf_url)}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">📄 PDF Notes</a>` : ''}
+              <button class="btn ${isDone(currentLesson.id) ? 'btn-dark' : 'btn-primary'} btn-sm" id="completeBtn">${isDone(currentLesson.id) ? '✓ Completed' : 'Mark Complete'}</button>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:20px">
+            <button class="btn btn-ghost btn-sm" id="prevBtn" ${!prev ? 'disabled' : ''}>← Previous</button>
+            <button class="btn btn-ghost btn-sm" id="nextBtn" ${!next ? 'disabled' : ''}>Next →</button>
+          </div>
+        </div>
+        <div class="card curriculum-panel">${renderCurriculum()}</div>
+      </div>
+    `;
+
+      document.querySelectorAll('.curriculum-lesson').forEach((node) => {
+        node.addEventListener('click', () => {
+          currentLesson = allLessons.find((l) => l.id === node.dataset.lessonId);
+          history.replaceState(null, '', `?courseId=${courseId}&lessonId=${currentLesson.id}`);
+          renderPlayer();
+        });
+      });
+      document.getElementById('prevBtn')?.addEventListener('click', () => { if (prev) { currentLesson = prev; renderPlayer(); } });
+      document.getElementById('nextBtn')?.addEventListener('click', () => { if (next) { currentLesson = next; renderPlayer(); } });
+      document.getElementById('completeBtn')?.addEventListener('click', async (e) => {
+        try {
+          await markLessonComplete(session.user.id, currentLesson.id);
+          progressRows = await getProgressForCourse(session.user.id, allLessons.map((l) => l.id));
+          toastSuccess('Lesson marked complete!');
+          renderPlayer();
+        } catch { toastError('Could not update progress.'); }
+      });
+
+      touchLessonWatched(session.user.id, currentLesson.id).catch(() => { });
+    }
+
+    renderPlayer();
+  </script>
+</body>
+
+</html>

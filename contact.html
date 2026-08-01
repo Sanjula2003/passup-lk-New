@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — PassUp.LK</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+  <section class="section container" style="padding-top:64px;max-width:560px">
+    <div class="section-head" style="margin-bottom:32px">
+      <h1>Contact Us</h1>
+      <p>Questions about a course or your enrollment? Reach out — we typically reply within a day.</p>
+    </div>
+    <div class="card card-body">
+      <form id="contactForm" novalidate>
+        <div class="field">
+          <label for="name">Full Name</label>
+          <input class="input" id="name" name="name" type="text" required>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input class="input" id="email" name="email" type="email" required>
+        </div>
+        <div class="field">
+          <label for="message">Message</label>
+          <textarea class="input" id="message" name="message" rows="5" required></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Send Message</button>
+      </form>
+    </div>
+  </section>
+</main>
+<div id="site-footer"></div>
+<script type="module">
+  import { renderSiteHeader } from '/assets/js/components/site-header.js';
+  import { renderSiteFooter } from '/assets/js/components/site-footer.js';
+  import { toastSuccess, toastError } from '/assets/js/utils/toast.js';
+  import { isValidEmail, isNonEmpty, applyFieldError, clearFieldError } from '/assets/js/utils/validators.js';
+  import { getSetting } from '/assets/js/services/settings.service.js';
+
+  renderSiteHeader(document.getElementById('site-header'), '/contact.html');
+  renderSiteFooter(document.getElementById('site-footer'));
+
+  // NOTE: this form has no backend endpoint by default (the spec defines no
+  // "messages" table). It validates client-side and hands off to WhatsApp so
+  // it works out of the box; wire it to a table/edge function if you want
+  // messages stored in Supabase instead.
+  document.getElementById('contactForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('name');
+    const email = document.getElementById('email');
+    const message = document.getElementById('message');
+    [name, email, message].forEach(clearFieldError);
+
+    let valid = true;
+    if (!isNonEmpty(name.value)) { applyFieldError(name, 'Please enter your name.'); valid = false; }
+    if (!isValidEmail(email.value)) { applyFieldError(email, 'Please enter a valid email.'); valid = false; }
+    if (!isNonEmpty(message.value)) { applyFieldError(message, 'Please enter a message.'); valid = false; }
+    if (!valid) return;
+
+    try {
+      const waNumber = await getSetting('whatsapp_number', '+94700000000');
+      const text = encodeURIComponent(`Hi PassUp.LK, my name is ${name.value}.\n\n${message.value}\n\n(Reply to: ${email.value})`);
+      window.open(`https://wa.me/${String(waNumber).replace(/\D/g, '')}?text=${text}`, '_blank');
+      toastSuccess('Opening WhatsApp to send your message…');
+      e.target.reset();
+    } catch {
+      toastError('Could not open WhatsApp right now. Please try again.');
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — PassUp.LK</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+  <section class="section container" style="padding-top:64px;max-width:720px">
+    <h1>Privacy Policy</h1>
+    <p style="margin-top:8px">Last updated: <span id="lastUpdated"></span></p>
+
+    <h3 style="margin-top:32px">Information We Collect</h3>
+    <p>When you create an account, we collect your full name and email address via Supabase Authentication. When you enroll in a course, we store your enrollment status and any payment slip or reference you provide for manual verification.</p>
+
+    <h3 style="margin-top:24px">How We Use Your Information</h3>
+    <p>Your information is used to manage your account, verify enrollment payments, track your lesson progress, and communicate with you about your courses.</p>
+
+    <h3 style="margin-top:24px">Data Storage</h3>
+    <p>All data is stored securely in a PostgreSQL database hosted by Supabase, protected by Row Level Security so only you and the course teacher can access your records.</p>
+
+    <h3 style="margin-top:24px">Third Parties</h3>
+    <p>Lesson videos are embedded from YouTube; PDF materials may be hosted on Google Drive. These services have their own privacy policies which apply when you interact with embedded content.</p>
+
+    <h3 style="margin-top:24px">Your Rights</h3>
+    <p>You may request access to, correction of, or deletion of your personal data at any time by contacting us.</p>
+
+    <h3 style="margin-top:24px">Contact</h3>
+    <p>Questions about this policy can be sent via our <a href="/contact.html" style="text-decoration:underline">Contact page</a>.</p>
+  </section>
+</main>
+<div id="site-footer"></div>
+<script type="module">
+  import { renderSiteHeader } from '/assets/js/components/site-header.js';
+  import { renderSiteFooter } from '/assets/js/components/site-footer.js';
+  renderSiteHeader(document.getElementById('site-header'), '');
+  renderSiteFooter(document.getElementById('site-footer'));
+  document.getElementById('lastUpdated').textContent = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+</script>
+</body>
+</html>

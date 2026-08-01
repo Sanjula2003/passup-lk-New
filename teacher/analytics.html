@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics — PassUp.LK Teacher</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="stylesheet" href="/assets/css/pages/dashboard.css">
+</head>
+<body>
+<script type="module">
+  import { requireTeacher } from '/assets/js/utils/guards.js';
+  import { renderAppShell } from '/assets/js/components/app-shell.js';
+  import { getDashboardStats, getPopularCourses, getMonthlyRegistrations } from '/assets/js/services/analytics.service.js';
+  import { formatCurrencyLKR } from '/assets/js/utils/formatters.js';
+  import { escapeHTML, renderEmptyState } from '/assets/js/utils/dom.js';
+
+  const auth = await requireTeacher();
+  if (!auth) throw new Error('redirecting');
+  const { profile } = auth;
+
+  const content = renderAppShell({ role: 'teacher', profile, activeHref: '/teacher/analytics.html', pageTitle: 'Analytics' });
+  content.innerHTML = `
+    <div class="page-head"><h1>Analytics</h1></div>
+    <div class="grid grid-4" id="statGrid">${'<div class="skeleton" style="height:110px"></div>'.repeat(4)}</div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:24px;margin-top:32px" id="lowerGrid">
+      <div class="skeleton" style="height:280px"></div>
+      <div class="skeleton" style="height:280px"></div>
+    </div>
+    <style>@media(max-width:900px){#lowerGrid{grid-template-columns:1fr !important}}</style>
+  `;
+
+  const [stats, popular, monthly] = await Promise.all([getDashboardStats(), getPopularCourses(8), getMonthlyRegistrations(6)]);
+
+  document.getElementById('statGrid').innerHTML = `
+    <div class="card stat-card"><span class="stat-card__label">Total Students</span><span class="stat-card__value">${stats.totalStudents}</span></div>
+    <div class="card stat-card"><span class="stat-card__label">Total Courses</span><span class="stat-card__value">${stats.totalCourses}</span></div>
+    <div class="card stat-card"><span class="stat-card__label">Pending Enrollments</span><span class="stat-card__value">${stats.pendingEnrollments}</span></div>
+    <div class="card stat-card"><span class="stat-card__label">Total Revenue</span><span class="stat-card__value">${formatCurrencyLKR(stats.revenue)}</span></div>
+  `;
+
+  const lowerGrid = document.getElementById('lowerGrid');
+  lowerGrid.innerHTML = `
+    <div class="card card-body">
+      <h3>Popular Courses</h3>
+      <div id="popularChart" style="margin-top:20px;display:flex;flex-direction:column;gap:12px"></div>
+    </div>
+    <div class="card card-body">
+      <h3>Monthly Registrations</h3>
+      <div id="regChart" style="margin-top:20px;display:flex;flex-direction:column;gap:12px"></div>
+    </div>
+  `;
+
+  const popularChart = document.getElementById('popularChart');
+  if (!popular.length) {
+    renderEmptyState(popularChart, { icon: '📊', title: 'No enrollments yet' });
+  } else {
+    const max = Math.max(...popular.map((p) => p.count));
+    popularChart.innerHTML = popular.map((p) => `
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px">
+          <span>${escapeHTML(p.title)}</span><strong>${p.count}</strong>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:${(p.count / max) * 100}%"></div></div>
+      </div>`).join('');
+  }
+
+  const regChart = document.getElementById('regChart');
+  const entries = Object.entries(monthly).sort();
+  if (!entries.length) {
+    renderEmptyState(regChart, { icon: '📈', title: 'No registrations yet' });
+  } else {
+    const max = Math.max(...entries.map(([, v]) => v));
+    regChart.innerHTML = entries.map(([month, count]) => `
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px">
+          <span>${month}</span><strong>${count}</strong>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:${(count / max) * 100}%"></div></div>
+      </div>`).join('');
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enrollments — PassUp.LK Teacher</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="stylesheet" href="/assets/css/pages/dashboard.css">
+</head>
+<body>
+<script type="module">
+  import { requireTeacher } from '/assets/js/utils/guards.js';
+  import { renderAppShell } from '/assets/js/components/app-shell.js';
+  import { listAllEnrollments, approveEnrollment, rejectEnrollment, suspendEnrollment } from '/assets/js/services/enrollments.service.js';
+  import { escapeHTML, renderEmptyState, renderErrorState, qsa } from '/assets/js/utils/dom.js';
+  import { statusBadgeClass, formatDate } from '/assets/js/utils/formatters.js';
+  import { toastSuccess, toastError } from '/assets/js/utils/toast.js';
+  import { confirmModal } from '/assets/js/components/modal.js';
+
+  const auth = await requireTeacher();
+  if (!auth) throw new Error('redirecting');
+  const { profile } = auth;
+
+  const content = renderAppShell({ role: 'teacher', profile, activeHref: '/teacher/enrollments.html', pageTitle: 'Enrollments' });
+  content.innerHTML = `
+    <div class="page-head"><h1>Enrollments</h1></div>
+    <div class="filter-bar">
+      <button class="btn btn-dark btn-sm" data-status="pending">Pending</button>
+      <button class="btn btn-outline btn-sm" data-status="approved">Approved</button>
+      <button class="btn btn-outline btn-sm" data-status="rejected">Rejected</button>
+      <button class="btn btn-outline btn-sm" data-status="suspended">Suspended</button>
+      <button class="btn btn-outline btn-sm" data-status="">All</button>
+    </div>
+    <div class="card table-scroll">
+      <table class="data-table" id="table">
+        <thead><tr><th>Student</th><th>Course</th><th>Requested</th><th>Status</th><th>Reference</th><th>Actions</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="6"><div class="skeleton" style="height:40px"></div></td></tr></tbody>
+      </table>
+    </div>
+  `;
+
+  let activeStatus = 'pending';
+  const tbody = document.getElementById('tbody');
+
+  async function load() {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="skeleton" style="height:40px"></div></td></tr>';
+    try {
+      const rows = await listAllEnrollments({ status: activeStatus || null });
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="state-panel"><div class="state-panel__icon">📭</div><h3>No enrollments</h3></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map((e) => `
+        <tr>
+          <td><strong>${escapeHTML(e.profiles?.full_name ?? '')}</strong><br><span style="font-size:0.8rem;color:var(--text-secondary)">${escapeHTML(e.profiles?.email ?? '')}</span></td>
+          <td>${escapeHTML(e.courses?.title ?? '')}</td>
+          <td>${formatDate(e.created_at)}</td>
+          <td><span class="badge ${statusBadgeClass(e.status)}" style="text-transform:capitalize">${e.status}</span></td>
+          <td>${escapeHTML(e.payment_reference ?? '—')}</td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              ${e.status !== 'approved' ? `<button class="btn btn-primary btn-sm" data-action="approve" data-id="${e.id}">Approve</button>` : ''}
+              ${e.status !== 'rejected' ? `<button class="btn btn-outline btn-sm" data-action="reject" data-id="${e.id}">Reject</button>` : ''}
+              ${e.status === 'approved' ? `<button class="btn btn-danger btn-sm" data-action="suspend" data-id="${e.id}">Suspend</button>` : ''}
+            </div>
+          </td>
+        </tr>`).join('');
+
+      qsa('[data-action]').forEach((btn) => btn.addEventListener('click', () => handleAction(btn.dataset.action, btn.dataset.id)));
+    } catch {
+      renderErrorState(tbody, 'Could not load enrollments.');
+    }
+  }
+
+  async function handleAction(action, id) {
+    const labels = { approve: 'Approve this enrollment?', reject: 'Reject this enrollment?', suspend: 'Suspend this enrollment? The student will lose access immediately.' };
+    const ok = await confirmModal({ title: 'Confirm Action', message: labels[action], confirmLabel: action[0].toUpperCase() + action.slice(1), danger: action !== 'approve' });
+    if (!ok) return;
+    try {
+      if (action === 'approve') await approveEnrollment(id);
+      if (action === 'reject') await rejectEnrollment(id);
+      if (action === 'suspend') await suspendEnrollment(id);
+      toastSuccess('Updated.');
+      load();
+    } catch (err) {
+      toastError(err.message || 'Action failed.');
+    }
+  }
+
+  qsa('[data-status]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activeStatus = btn.dataset.status;
+      qsa('[data-status]').forEach((b) => b.classList.replace('btn-dark', 'btn-outline'));
+      btn.classList.replace('btn-outline', 'btn-dark');
+      load();
+    });
+  });
+
+  load();
+</script>
+</body>
+</html>

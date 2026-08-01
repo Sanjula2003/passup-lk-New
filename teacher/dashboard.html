@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teacher Dashboard — PassUp.LK</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="stylesheet" href="/assets/css/pages/dashboard.css">
+</head>
+<body>
+<script type="module">
+  import { requireTeacher } from '/assets/js/utils/guards.js';
+  import { renderAppShell } from '/assets/js/components/app-shell.js';
+  import { getDashboardStats, getPopularCourses } from '/assets/js/services/analytics.service.js';
+  import { listAllEnrollments } from '/assets/js/services/enrollments.service.js';
+  import { escapeHTML, renderEmptyState } from '/assets/js/utils/dom.js';
+  import { formatCurrencyLKR, formatDate } from '/assets/js/utils/formatters.js';
+
+  const auth = await requireTeacher();
+  if (!auth) throw new Error('redirecting');
+  const { profile } = auth;
+
+  const content = renderAppShell({ role: 'teacher', profile, activeHref: '/teacher/dashboard.html', pageTitle: 'Dashboard' });
+  content.innerHTML = `
+    <div class="page-head"><h1>Teacher Dashboard</h1></div>
+    <div class="grid grid-4" id="statGrid">${'<div class="skeleton" style="height:110px"></div>'.repeat(4)}</div>
+    <div class="grid" style="grid-template-columns:1.4fr 1fr;gap:24px;margin-top:32px" id="lowerGrid">
+      <div class="skeleton" style="height:280px"></div>
+      <div class="skeleton" style="height:280px"></div>
+    </div>
+    <style>@media(max-width:900px){#lowerGrid{grid-template-columns:1fr !important}}</style>
+  `;
+
+  const [stats, popular, pendingEnrollments] = await Promise.all([
+    getDashboardStats(),
+    getPopularCourses(5),
+    listAllEnrollments({ status: 'pending' }),
+  ]);
+
+  document.getElementById('statGrid').innerHTML = `
+    <div class="card stat-card"><span class="stat-card__label">Total Students</span><span class="stat-card__value">${stats.totalStudents}</span></div>
+    <div class="card stat-card"><span class="stat-card__label">Active Students</span><span class="stat-card__value">${stats.activeStudents}</span></div>
+    <div class="card stat-card"><span class="stat-card__label">Pending Enrollments</span><span class="stat-card__value">${stats.pendingEnrollments}</span></div>
+    <div class="card stat-card"><span class="stat-card__label">Total Revenue</span><span class="stat-card__value">${formatCurrencyLKR(stats.revenue)}</span></div>
+  `;
+
+  const lowerGrid = document.getElementById('lowerGrid');
+  lowerGrid.innerHTML = `
+    <div class="card card-body">
+      <h3>Pending Enrollment Requests</h3>
+      <div id="pendingList" style="margin-top:16px"></div>
+      <a href="/teacher/enrollments.html" class="btn btn-outline btn-sm" style="margin-top:12px">Review All</a>
+    </div>
+    <div class="card card-body">
+      <h3>Popular Courses</h3>
+      <div id="popularList" style="margin-top:16px"></div>
+    </div>
+  `;
+
+  const pendingList = document.getElementById('pendingList');
+  if (!pendingEnrollments.length) {
+    renderEmptyState(pendingList, { icon: '✅', title: 'All caught up', message: 'No pending enrollments right now.' });
+  } else {
+    pendingList.innerHTML = pendingEnrollments.slice(0, 5).map((e) => `
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--color-neutral-100)">
+        <div>
+          <strong style="font-size:0.9rem">${escapeHTML(e.profiles?.full_name ?? '')}</strong>
+          <div style="font-size:0.8rem;color:var(--text-secondary)">${escapeHTML(e.courses?.title ?? '')}</div>
+        </div>
+        <span style="font-size:0.75rem;color:var(--text-secondary)">${formatDate(e.created_at)}</span>
+      </div>`).join('');
+  }
+
+  const popularList = document.getElementById('popularList');
+  if (!popular.length) {
+    renderEmptyState(popularList, { icon: '📊', title: 'No data yet', message: 'Popular courses will appear once students enroll.' });
+  } else {
+    popularList.innerHTML = popular.map((p) => `
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--color-neutral-100)">
+        <strong style="font-size:0.9rem">${escapeHTML(p.title)}</strong>
+        <span class="badge badge-info">${p.count} students</span>
+      </div>`).join('');
+  }
+</script>
+</body>
+</html>

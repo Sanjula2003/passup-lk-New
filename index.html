@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PassUp.LK — Anyone Can Pass</title>
+<meta name="description" content="Premium O/L and A/L ICT learning for Sri Lankan students. Anyone Can Pass — backed by a 100% cashback guarantee.">
+<link rel="icon" href="/assets/icons/favicon.svg">
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="stylesheet" href="/assets/css/pages/landing.css">
+</head>
+<body>
+<a href="#main" class="skip-link">Skip to content</a>
+<div id="site-header"></div>
+
+<main id="main">
+  <!-- Hero ------------------------------------------------------------- -->
+  <section class="hero">
+    <div class="container hero__grid">
+      <div>
+        <span class="hero__eyebrow">🇱🇰 Built for Sri Lankan ICT students</span>
+        <h1 class="hero__title">Anyone Can <mark>Pass</mark> — with the right guidance.</h1>
+        <p class="hero__lead">PassUp.LK is a premium learning platform for O/L and A/L ICT. Structured lessons, real past-paper practice, and a teacher who's with you the whole way.</p>
+        <div class="hero__actions">
+          <a href="/signup.html" class="btn btn-primary">Get Started Free</a>
+          <a href="/courses.html" class="btn btn-outline">Browse Courses</a>
+        </div>
+      </div>
+      <div class="hero__art">
+        <img src="/assets/images/logo.jpeg" alt="Illustration of a student passing an exam" class="hero__art-image">
+        <div class="hero__art-badge">100%<span>Cashback</span>Guarantee</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Guarantee ---------------------------------------------------------- -->
+  <section class="container section">
+    <div class="guarantee-band">
+      <div class="guarantee-band__badge">100%<br>Back</div>
+      <div>
+        <h3 style="color:#fff">Our Promise To You</h3>
+        <p style="color:#d4d4d4">If anyone fails even after following our program, we'll return 100% cashback. No fine print — we're that confident in the method.</p>
+      </div>
+      <a href="/about.html" class="btn btn-primary">Learn How It Works</a>
+    </div>
+  </section>
+
+  <!-- Categories ---------------------------------------------------------- -->
+  <section class="container section">
+    <div class="section-head">
+      <h2>Choose Your Path</h2>
+      <p>Two focused programs. Nothing to get lost in.</p>
+    </div>
+    <div class="grid grid-2">
+      <a href="/courses.html?subject=ol-ict" class="card card-hover category-card">
+        <div class="category-card__icon">O/L</div>
+        <h3>O/L ICT</h3>
+        <p>Foundational computing concepts, mapped directly to the O/L syllabus.</p>
+      </a>
+      <a href="/courses.html?subject=al-ict" class="card card-hover category-card">
+        <div class="category-card__icon">A/L</div>
+        <h3>A/L ICT</h3>
+        <p>In-depth A/L ICT theory and practicals, built for university entry.</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Featured courses ------------------------------------------------------ -->
+  <section class="container section">
+    <div class="section-head">
+      <h2>Featured Courses</h2>
+      <p>A sample of what's inside PassUp.LK today.</p>
+    </div>
+    <div class="grid grid-3" id="featuredCourses">
+      <div class="skeleton" style="height:280px"></div>
+      <div class="skeleton" style="height:280px"></div>
+      <div class="skeleton" style="height:280px"></div>
+    </div>
+  </section>
+
+  <!-- Testimonials 
+  <section class="container section">
+    <div class="section-head">
+      <h2>What Students Say</h2>
+      <p>Real results from real students. (Placeholder testimonials — replace with real ones from the teacher panel.)</p>
+    </div>
+    <div class="grid grid-3">
+      <div class="card testimonial-card">
+        <div class="testimonial-card__stars">★★★★★</div>
+        <p>"I went from struggling with basic concepts to scoring an A in O/L ICT. The lessons are so clear."</p>
+        <div class="testimonial-card__author">
+          <div class="avatar-circle">SP</div>
+          <div><strong>Sithumini P.</strong><br><small>O/L ICT Student</small></div>
+        </div>
+      </div>
+      <div class="card testimonial-card">
+        <div class="testimonial-card__stars">★★★★★</div>
+        <p>"The A/L ICT past paper walkthroughs alone were worth it. Highly recommend to anyone serious about passing."</p>
+        <div class="testimonial-card__author">
+          <div class="avatar-circle">DR</div>
+          <div><strong>Dinuka R.</strong><br><small>A/L ICT Student</small></div>
+        </div>
+      </div>
+      <div class="card testimonial-card">
+        <div class="testimonial-card__stars">★★★★★</div>
+        <p>"Payment and enrollment was simple, and the teacher personally verified everything. Felt very trustworthy."</p>
+        <div class="testimonial-card__author">
+          <div class="avatar-circle">NF</div>
+          <div><strong>Nethmi F.</strong><br><small>O/L ICT Student</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  --------------------------------------------------------- -->
+
+  <!-- CTA ------------------------------------------------------------------ -->
+  <section class="container section" style="text-align:center">
+    <h2>Ready to pass with confidence?</h2>
+    <p style="max-width:480px;margin-inline:auto;margin-bottom:24px">Join PassUp.LK today — it takes less than two minutes to sign up.</p>
+    <a href="/signup.html" class="btn btn-primary">Create Your Free Account</a>
+  </section>
+</main>
+
+<div id="site-footer"></div>
+
+<script type="module">
+  import { renderSiteHeader } from '/assets/js/components/site-header.js';
+  import { renderSiteFooter } from '/assets/js/components/site-footer.js';
+  import { listPublishedCourses } from '/assets/js/services/courses.service.js';
+  import { courseCardHTML } from '/assets/js/components/course-card.js';
+  import { renderEmptyState, renderErrorState } from '/assets/js/utils/dom.js';
+
+  renderSiteHeader(document.getElementById('site-header'), '/index.html');
+  renderSiteFooter(document.getElementById('site-footer'));
+
+  const featured = document.getElementById('featuredCourses');
+  listPublishedCourses().then((courses) => {
+    if (!courses.length) return renderEmptyState(featured, { icon: '📚', title: 'Courses coming soon', message: 'The teacher is preparing the first courses.' });
+    featured.innerHTML = courses.slice(0, 6).map((c) => courseCardHTML(c)).join('');
+  }).catch(() => renderErrorState(featured, 'Could not load featured courses.'));
+</script>
+</body>
+</html>

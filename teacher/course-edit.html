@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Course — PassUp.LK Teacher</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="stylesheet" href="/assets/css/pages/dashboard.css">
+</head>
+<body>
+<script type="module">
+  import { requireTeacher } from '/assets/js/utils/guards.js';
+  import { renderAppShell } from '/assets/js/components/app-shell.js';
+  import { getCourseWithCurriculum, updateCourse } from '/assets/js/services/courses.service.js';
+  import { createTopic, updateTopic, deleteTopic } from '/assets/js/services/topics.service.js';
+  import { createLesson, updateLesson, deleteLesson } from '/assets/js/services/lessons.service.js';
+  import { escapeHTML, renderErrorState, qsa } from '/assets/js/utils/dom.js';
+  import { toastSuccess, toastError } from '/assets/js/utils/toast.js';
+  import { confirmModal } from '/assets/js/components/modal.js';
+  import { isNonEmpty, isYouTubeId, applyFieldError, clearFieldError } from '/assets/js/utils/validators.js';
+
+  const auth = await requireTeacher();
+  if (!auth) throw new Error('redirecting');
+  const { profile } = auth;
+
+  const content = renderAppShell({ role: 'teacher', profile, activeHref: '/teacher/courses.html', pageTitle: 'Manage Course' });
+  content.innerHTML = `<div class="skeleton" style="height:400px"></div>`;
+
+  const courseId = new URLSearchParams(window.location.search).get('courseId');
+  if (!courseId) { renderErrorState(content, 'No course specified.'); throw new Error('no id'); }
+
+  async function load() {
+    let course;
+    try {
+      course = await getCourseWithCurriculum(courseId);
+    } catch {
+      return renderErrorState(content, 'Could not load this course.');
+    }
+
+    content.innerHTML = `
+      <div class="page-head">
+        <div>
+          <h1>${escapeHTML(course.title)}</h1>
+          <span class="badge ${course.is_published ? 'badge-success' : 'badge-warning'}">${course.is_published ? 'Published' : 'Draft'}</span>
+        </div>
+        <button class="btn btn-primary" id="newTopicBtn">+ Add Topic</button>
+      </div>
+      <div id="topicsList" style="display:flex;flex-direction:column;gap:16px"></div>
+    `;
+
+    const topicsList = document.getElementById('topicsList');
+    const topics = (course.topics ?? []).sort((a, b) => a.display_order - b.display_order);
+
+    if (!topics.length) {
+      topicsList.innerHTML = `<div class="state-panel"><div class="state-panel__icon">🗂️</div><h3>No topics yet</h3><p>Add a topic to start building this course's curriculum.</p></div>`;
+    } else {
+      topicsList.innerHTML = topics.map((t) => `
+        <div class="card card-body">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong>${escapeHTML(t.title)}</strong>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-outline btn-sm" data-action="add-lesson" data-topic="${t.id}">+ Lesson</button>
+              <button class="btn btn-ghost btn-sm" data-action="delete-topic" data-topic="${t.id}">Delete Topic</button>
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+            ${(t.lessons ?? []).sort((a, b) => a.display_order - b.display_order).map((l) => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--color-neutral-50);border-radius:8px">
+                <div>
+                  <strong style="font-size:0.9rem">${escapeHTML(l.title)}</strong>
+                  <span class="badge ${l.is_published ? 'badge-success' : 'badge-warning'}" style="margin-left:8px">${l.is_published ? 'Published' : 'Draft'}</span>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-outline btn-sm" data-action="edit-lesson" data-lesson="${l.id}" data-topic="${t.id}">Edit</button>
+                  <button class="btn btn-danger btn-sm" data-action="delete-lesson" data-lesson="${l.id}">Delete</button>
+                </div>
+              </div>`).join('') || '<p style="font-size:0.85rem;color:var(--text-secondary)">No lessons yet.</p>'}
+          </div>
+        </div>`).join('');
+    }
+
+    document.getElementById('newTopicBtn').addEventListener('click', () => openTopicModal());
+    qsa('[data-action="delete-topic"]').forEach((b) => b.addEventListener('click', () => handleDeleteTopic(b.dataset.topic)));
+    qsa('[data-action="add-lesson"]').forEach((b) => b.addEventListener('click', () => openLessonModal(b.dataset.topic)));
+    qsa('[data-action="edit-lesson"]').forEach((b) => {
+      const topic = topics.find((t) => t.id === b.dataset.topic);
+      const lesson = topic.lessons.find((l) => l.id === b.dataset.lesson);
+      b.addEventListener('click', () => openLessonModal(b.dataset.topic, lesson));
+    });
+    qsa('[data-action="delete-lesson"]').forEach((b) => b.addEventListener('click', () => handleDeleteLesson(b.dataset.lesson)));
+  }
+
+  function openTopicModal() {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal">
+        <h3>New Topic</h3>
+        <form id="topicForm" style="margin-top:16px">
+          <div class="field"><label>Title</label><input class="input" id="topicTitle" required></div>
+          <div class="field"><label>Description</label><textarea class="input" id="topicDesc" rows="2"></textarea></div>
+          <div style="display:flex;gap:12px;justify-content:flex-end">
+            <button type="button" class="btn btn-ghost" id="cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add Topic</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(backdrop);
+    backdrop.querySelector('#cancel').addEventListener('click', () => backdrop.remove());
+    backdrop.addEventListener('click', (e) => e.target === backdrop && backdrop.remove());
+    backdrop.querySelector('#topicForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = backdrop.querySelector('#topicTitle');
+      if (!isNonEmpty(title.value)) return applyFieldError(title, 'Required.');
+      try {
+        await createTopic({ course_id: courseId, title: title.value.trim(), description: backdrop.querySelector('#topicDesc').value.trim() });
+        toastSuccess('Topic added.');
+        backdrop.remove();
+        load();
+      } catch (err) { toastError(err.message); }
+    });
+  }
+
+  function openLessonModal(topicId, lesson = null) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal">
+        <h3>${lesson ? 'Edit Lesson' : 'New Lesson'}</h3>
+        <form id="lessonForm" style="margin-top:16px">
+          <div class="field"><label>Title</label><input class="input" id="lTitle" value="${lesson ? escapeHTML(lesson.title) : ''}" required></div>
+          <div class="field"><label>Description</label><textarea class="input" id="lDesc" rows="2">${lesson ? escapeHTML(lesson.description ?? '') : ''}</textarea></div>
+          <div class="field"><label>YouTube Video ID</label><input class="input" id="lVideo" placeholder="e.g. dQw4w9WgXcQ" value="${lesson ? escapeHTML(lesson.youtube_video_id) : ''}" required>
+            <span class="field-hint">The 11-character ID from the video URL, not the full link.</span>
+          </div>
+          <div class="field"><label>PDF Link (Google Drive)</label><input class="input" id="lPdf" value="${lesson ? escapeHTML(lesson.pdf_url ?? '') : ''}"></div>
+          <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+            <input type="checkbox" id="lPublished" ${lesson?.is_published ? 'checked' : ''} style="width:auto">
+            <label for="lPublished" style="margin:0">Published (visible to enrolled students)</label>
+          </div>
+          <div style="display:flex;gap:12px;justify-content:flex-end">
+            <button type="button" class="btn btn-ghost" id="cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">${lesson ? 'Save Changes' : 'Add Lesson'}</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(backdrop);
+    backdrop.querySelector('#cancel').addEventListener('click', () => backdrop.remove());
+    backdrop.addEventListener('click', (e) => e.target === backdrop && backdrop.remove());
+    backdrop.querySelector('#lessonForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = backdrop.querySelector('#lTitle');
+      const video = backdrop.querySelector('#lVideo');
+      [title, video].forEach(clearFieldError);
+      let valid = true;
+      if (!isNonEmpty(title.value)) { applyFieldError(title, 'Required.'); valid = false; }
+      if (!isYouTubeId(video.value.trim())) { applyFieldError(video, 'Enter a valid 11-character YouTube video ID.'); valid = false; }
+      if (!valid) return;
+
+      const payload = {
+        title: title.value.trim(),
+        description: backdrop.querySelector('#lDesc').value.trim(),
+        youtube_video_id: video.value.trim(),
+        pdf_url: backdrop.querySelector('#lPdf').value.trim() || null,
+        is_published: backdrop.querySelector('#lPublished').checked,
+      };
+      try {
+        if (lesson) await updateLesson(lesson.id, payload);
+        else await createLesson({ ...payload, topic_id: topicId });
+        toastSuccess(lesson ? 'Lesson updated.' : 'Lesson added.');
+        backdrop.remove();
+        load();
+      } catch (err) { toastError(err.message); }
+    });
+  }
+
+  async function handleDeleteTopic(id) {
+    const ok = await confirmModal({ title: 'Delete topic?', message: 'All lessons inside it will also be deleted.', confirmLabel: 'Delete', danger: true });
+    if (!ok) return;
+    try { await deleteTopic(id); toastSuccess('Topic deleted.'); load(); } catch (err) { toastError(err.message); }
+  }
+
+  async function handleDeleteLesson(id) {
+    const ok = await confirmModal({ title: 'Delete lesson?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true });
+    if (!ok) return;
+    try { await deleteLesson(id); toastSuccess('Lesson deleted.'); load(); } catch (err) { toastError(err.message); }
+  }
+
+  load();
+</script>
+</body>
+</html>

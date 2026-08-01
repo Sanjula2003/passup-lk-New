@@ -1,0 +1,21 @@
+# ============================================================================
+# PassUp.LK — Netlify configuration
+# ============================================================================
+[build]
+  publish = "."
+  command = """
+    mkdir -p config &&
+    printf 'export const APP_CONFIG = {\\n  SUPABASE_URL: "%s",\\n  SUPABASE_ANON_KEY: "%s",\\n  SITE_NAME: "PassUp.LK",\\n  SITE_TAGLINE: "Anyone Can Pass",\\n  SUPPORT_WHATSAPP_LINK: "%s",\\n};\\n' \
+      "$SUPABASE_URL" "$SUPABASE_ANON_KEY" "$SUPPORT_WHATSAPP_LINK" > config/config.js
+  """
+
+# Every deep link (e.g. /student/dashboard.html loaded directly) must be
+# served as-is since this is a static multi-page site, not a SPA router.
+[[redirects]]
+  from = "/*"
+  to = "/:splat"
+  status = 200
+  force = false
+
+[build.environment]
+  NODE_VERSION = "20"

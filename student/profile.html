@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — PassUp.LK</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+</head>
+<body>
+<script type="module">
+  import { requireStudent } from '/assets/js/utils/guards.js';
+  import { renderAppShell } from '/assets/js/components/app-shell.js';
+  import { updateOwnProfile } from '/assets/js/services/auth.service.js';
+  import { initials } from '/assets/js/utils/formatters.js';
+  import { escapeHTML } from '/assets/js/utils/dom.js';
+  import { toastSuccess, toastError } from '/assets/js/utils/toast.js';
+  import { isNonEmpty, applyFieldError, clearFieldError } from '/assets/js/utils/validators.js';
+
+  const auth = await requireStudent();
+  if (!auth) throw new Error('redirecting');
+  const { profile } = auth;
+
+  const content = renderAppShell({ role: 'student', profile, activeHref: '/student/profile.html', pageTitle: 'Profile' });
+  content.innerHTML = `
+    <div class="page-head"><h1>My Profile</h1></div>
+    <div class="card card-body" style="max-width:480px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
+        <div class="avatar-circle" style="width:64px;height:64px;font-size:1.4rem">${initials(profile.full_name)}</div>
+        <div>
+          <strong>${escapeHTML(profile.full_name)}</strong>
+          <div style="font-size:0.85rem;color:var(--text-secondary)">${escapeHTML(profile.email)}</div>
+        </div>
+      </div>
+      <form id="profileForm" novalidate>
+        <div class="field">
+          <label for="fullName">Full Name</label>
+          <input class="input" id="fullName" value="${escapeHTML(profile.full_name)}" required>
+        </div>
+        <div class="field">
+          <label for="phone">Phone (optional)</label>
+          <input class="input" id="phone" value="${escapeHTML(profile.phone ?? '')}">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input class="input" value="${escapeHTML(profile.email)}" disabled>
+          <span class="field-hint">Contact support to change your email.</span>
+        </div>
+        <button class="btn btn-primary" type="submit" id="saveBtn">Save Changes</button>
+      </form>
+    </div>
+  `;
+
+  document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fullName = document.getElementById('fullName');
+    clearFieldError(fullName);
+    if (!isNonEmpty(fullName.value)) { applyFieldError(fullName, 'Name cannot be empty.'); return; }
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      await updateOwnProfile({ full_name: fullName.value.trim(), phone: document.getElementById('phone').value.trim() || null });
+      toastSuccess('Profile updated.');
+    } catch (err) {
+      toastError(err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save Changes';
+    }
+  });
+</script>
+</body>
+</html>

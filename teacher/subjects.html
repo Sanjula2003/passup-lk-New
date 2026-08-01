@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subjects — PassUp.LK Teacher</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="stylesheet" href="/assets/css/pages/dashboard.css">
+</head>
+<body>
+<script type="module">
+  import { requireTeacher } from '/assets/js/utils/guards.js';
+  import { renderAppShell } from '/assets/js/components/app-shell.js';
+  import { listSubjects, updateSubject } from '/assets/js/services/subjects.service.js';
+  import { escapeHTML } from '/assets/js/utils/dom.js';
+  import { toastSuccess, toastError } from '/assets/js/utils/toast.js';
+
+  const auth = await requireTeacher();
+  if (!auth) throw new Error('redirecting');
+  const { profile } = auth;
+
+  const content = renderAppShell({ role: 'teacher', profile, activeHref: '/teacher/subjects.html', pageTitle: 'Subjects' });
+  content.innerHTML = `<div class="skeleton" style="height:280px"></div>`;
+
+  // Subjects are a fixed catalog (O/L ICT, A/L ICT only — enforced by a DB
+  // CHECK constraint). This page only lets the teacher edit each subject's
+  // description; there is intentionally no "add subject" action.
+  const subjects = await listSubjects();
+
+  content.innerHTML = `
+    <div class="page-head"><h1>Subjects</h1></div>
+    <div class="grid grid-2">
+      ${subjects.map((s) => `
+        <div class="card card-body">
+          <h3>${escapeHTML(s.name)}</h3>
+          <form data-id="${s.id}" class="subjectForm" style="margin-top:12px">
+            <div class="field"><label>Description</label><textarea class="input" rows="3">${escapeHTML(s.description ?? '')}</textarea></div>
+            <button class="btn btn-primary btn-sm" type="submit">Save</button>
+          </form>
+        </div>`).join('')}
+    </div>
+  `;
+
+  document.querySelectorAll('.subjectForm').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await updateSubject(form.dataset.id, { description: form.querySelector('textarea').value.trim() });
+        toastSuccess('Subject updated.');
+      } catch (err) { toastError(err.message); }
+    });
+  });
+</script>
+</body>
+</html>

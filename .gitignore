@@ -1,0 +1,12 @@
+# Real Supabase credentials — never commit these
+config/config.js
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
+
+# Netlify local dev
+.netlify/
+node_modules/

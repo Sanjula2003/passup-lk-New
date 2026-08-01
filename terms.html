@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Service — PassUp.LK</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+</head>
+<body>
+<div id="site-header"></div>
+<main>
+  <section class="section container" style="padding-top:64px;max-width:720px">
+    <h1>Terms of Service</h1>
+    <p style="margin-top:8px">Last updated: <span id="lastUpdated"></span></p>
+
+    <h3 style="margin-top:32px">1. Enrollment & Payment</h3>
+    <p>Course access is granted after manual verification of payment by the teacher. PassUp.LK reserves the right to reject or suspend an enrollment where payment cannot be verified.</p>
+
+    <h3 style="margin-top:24px">2. The Cashback Guarantee</h3>
+    <p>Students who complete the full assigned program and still fail their examination are eligible for a 100% cashback of their course fee, subject to proof of completion and exam results being provided.</p>
+
+    <h3 style="margin-top:24px">3. Acceptable Use</h3>
+    <p>Course materials, videos, and PDFs are for the personal, non-commercial use of the enrolled student only. Redistribution, downloading of video content, or sharing of account access is prohibited and may result in suspension.</p>
+
+    <h3 style="margin-top:24px">4. Account Suspension</h3>
+    <p>PassUp.LK may suspend an account for violation of these terms, including sharing access credentials or attempting to circumvent content protections.</p>
+
+    <h3 style="margin-top:24px">5. Changes to These Terms</h3>
+    <p>We may update these terms from time to time. Continued use of PassUp.LK after changes constitutes acceptance of the revised terms.</p>
+  </section>
+</main>
+<div id="site-footer"></div>
+<script type="module">
+  import { renderSiteHeader } from '/assets/js/components/site-header.js';
+  import { renderSiteFooter } from '/assets/js/components/site-footer.js';
+  renderSiteHeader(document.getElementById('site-header'), '');
+  renderSiteFooter(document.getElementById('site-footer'));
+  document.getElementById('lastUpdated').textContent = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+</script>
+</body>
+</html>

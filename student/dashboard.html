@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — PassUp.LK</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="stylesheet" href="/assets/css/pages/dashboard.css">
+</head>
+<body>
+<script type="module">
+  import { requireStudent } from '/assets/js/utils/guards.js';
+  import { renderAppShell } from '/assets/js/components/app-shell.js';
+  import { listMyEnrollments } from '/assets/js/services/enrollments.service.js';
+  import { getProgressForCourse, computeCoursePercent } from '/assets/js/services/progress.service.js';
+  import { escapeHTML, renderEmptyState, renderErrorState } from '/assets/js/utils/dom.js';
+  import { statusBadgeClass } from '/assets/js/utils/formatters.js';
+
+  const auth = await requireStudent();
+  if (!auth) throw new Error('redirecting');
+  const { session, profile } = auth;
+
+  const content = renderAppShell({ role: 'student', profile, activeHref: '/student/dashboard.html', pageTitle: 'Dashboard' });
+
+  content.innerHTML = `
+    <div class="page-head">
+      <div>
+        <h1>Welcome back, ${escapeHTML(profile.full_name.split(' ')[0])} 👋</h1>
+        <p>Here's where you left off.</p>
+      </div>
+    </div>
+    <h3 style="margin-bottom:16px">Continue Learning</h3>
+    <div id="continueList" style="display:flex;flex-direction:column;gap:16px;margin-bottom:40px">
+      <div class="skeleton" style="height:96px"></div>
+    </div>
+    <h3 style="margin-bottom:16px">All Enrollments</h3>
+    <div id="enrollmentGrid" class="grid grid-3">
+      <div class="skeleton" style="height:160px"></div>
+    </div>
+  `;
+
+  try {
+    const enrollments = await listMyEnrollments(session.user.id);
+    const approved = enrollments.filter((e) => e.status === 'approved');
+
+    const continueList = document.getElementById('continueList');
+    if (!approved.length) {
+      renderEmptyState(continueList, { icon: '🎬', title: 'No active courses yet', message: 'Browse courses and enroll to start learning.' });
+    } else {
+      continueList.innerHTML = approved.slice(0, 3).map((e) => `
+        <a href="/student/course-player.html?courseId=${e.course_id}" class="card card-hover continue-card">
+          <div class="continue-card__thumb"></div>
+          <div class="continue-card__body">
+            <strong>${escapeHTML(e.courses?.title ?? '')}</strong>
+            <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:4px">${escapeHTML(e.courses?.subjects?.name ?? '')}</div>
+          </div>
+          <span class="btn btn-primary btn-sm">Resume</span>
+        </a>`).join('');
+    }
+
+    const grid = document.getElementById('enrollmentGrid');
+    if (!enrollments.length) {
+      renderEmptyState(grid, { icon: '📚', title: 'No enrollments yet', message: 'Head to the course catalog to get started.' });
+    } else {
+      grid.innerHTML = enrollments.map((e) => `
+        <div class="card card-body">
+          <span class="badge ${statusBadgeClass(e.status)}" style="text-transform:capitalize">${e.status}</span>
+          <h4 style="margin-top:12px">${escapeHTML(e.courses?.title ?? '')}</h4>
+          <p style="font-size:0.85rem">${escapeHTML(e.courses?.subjects?.name ?? '')}</p>
+          ${e.status === 'approved' ? `<a href="/student/course-player.html?courseId=${e.course_id}" class="btn btn-dark btn-sm" style="margin-top:8px">Open Course</a>` : ''}
+        </div>`).join('');
+    }
+  } catch (err) {
+    renderErrorState(document.getElementById('enrollmentGrid'), 'Could not load your courses.');
+  }
+</script>
+</body>
+</html>

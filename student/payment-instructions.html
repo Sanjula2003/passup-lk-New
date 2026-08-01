@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Instructions — PassUp.LK</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="stylesheet" href="/assets/css/pages/dashboard.css">
+</head>
+<body>
+<script type="module">
+  import { requireStudent } from '/assets/js/utils/guards.js';
+  import { renderAppShell } from '/assets/js/components/app-shell.js';
+  import { listMyEnrollments, attachPaymentSlip } from '/assets/js/services/enrollments.service.js';
+  import { getAllSettings } from '/assets/js/services/settings.service.js';
+  import { escapeHTML, renderEmptyState } from '/assets/js/utils/dom.js';
+  import { toastSuccess, toastError } from '/assets/js/utils/toast.js';
+  import { statusBadgeClass } from '/assets/js/utils/formatters.js';
+
+  const auth = await requireStudent();
+  if (!auth) throw new Error('redirecting');
+  const { session, profile } = auth;
+
+  const content = renderAppShell({ role: 'student', profile, activeHref: '/student/payment-instructions.html', pageTitle: 'Payment Instructions' });
+  content.innerHTML = `
+    <div class="page-head"><h1>Payment Instructions</h1></div>
+    <div class="grid" style="grid-template-columns:1fr;gap:32px" id="root">
+      <div class="skeleton" style="height:240px"></div>
+    </div>
+  `;
+
+  const root = document.getElementById('root');
+
+  try {
+    const [settings, enrollments] = await Promise.all([getAllSettings(), listMyEnrollments(session.user.id)]);
+    const bank = settings.bank_details ?? {};
+    const wa = settings.whatsapp_number ?? '+94700000000';
+    const pending = enrollments.filter((e) => e.status === 'pending');
+
+    root.innerHTML = `
+      <div class="card pay-instructions">
+        <h3>How to Complete Your Payment</h3>
+        <div class="pay-steps">
+          <div class="pay-step"><div class="pay-step__num">1</div><p>Transfer the course fee to the bank account below.</p></div>
+          <div class="pay-step"><div class="pay-step__num">2</div><p>Take a clear photo or screenshot of your payment slip / confirmation.</p></div>
+          <div class="pay-step"><div class="pay-step__num">3</div><p>Send it to us on WhatsApp along with your full name and the course you enrolled in.</p></div>
+          <div class="pay-step"><div class="pay-step__num">4</div><p>Our teacher verifies it and approves your access — usually within a few hours.</p></div>
+        </div>
+        <div class="card card-body" style="background:var(--color-neutral-50);margin-top:24px">
+          <strong>Bank Details</strong>
+          <p style="margin-top:8px">Bank: ${escapeHTML(bank.bank ?? '—')}<br>
+          Account Name: ${escapeHTML(bank.account_name ?? '—')}<br>
+          Account Number: ${escapeHTML(bank.account_number ?? '—')}<br>
+          Branch: ${escapeHTML(bank.branch ?? '—')}</p>
+        </div>
+        <a href="https://wa.me/${String(wa).replace(/\D/g,'')}" target="_blank" class="btn btn-primary" style="margin-top:20px">
+          Send Payment Slip on WhatsApp
+        </a>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:16px">Pending Enrollments</h3>
+        <div id="pendingList" class="grid grid-3"></div>
+      </div>
+    `;
+
+    const pendingList = document.getElementById('pendingList');
+    if (!pending.length) {
+      renderEmptyState(pendingList, { icon: '✅', title: 'Nothing pending', message: "You don't have any enrollments waiting on payment right now." });
+    } else {
+      pendingList.innerHTML = pending.map((e) => `
+        <div class="card card-body">
+          <span class="badge ${statusBadgeClass(e.status)}">${e.status}</span>
+          <h4 style="margin-top:12px">${escapeHTML(e.courses?.title ?? '')}</h4>
+        </div>`).join('');
+    }
+  } catch (err) {
+    toastError('Could not load payment instructions.');
+  }
+</script>
+</body>
+</html>

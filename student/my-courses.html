@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Courses — PassUp.LK</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="stylesheet" href="/assets/css/pages/dashboard.css">
+</head>
+<body>
+<script type="module">
+  import { requireStudent } from '/assets/js/utils/guards.js';
+  import { renderAppShell } from '/assets/js/components/app-shell.js';
+  import { listMyEnrollments } from '/assets/js/services/enrollments.service.js';
+  import { escapeHTML, renderEmptyState, renderErrorState } from '/assets/js/utils/dom.js';
+  import { statusBadgeClass, formatDate } from '/assets/js/utils/formatters.js';
+
+  const auth = await requireStudent();
+  if (!auth) throw new Error('redirecting');
+  const { session, profile } = auth;
+
+  const content = renderAppShell({ role: 'student', profile, activeHref: '/student/my-courses.html', pageTitle: 'My Courses' });
+  content.innerHTML = `
+    <div class="page-head"><h1>My Courses</h1></div>
+    <div class="grid grid-3" id="grid"><div class="skeleton" style="height:200px"></div></div>
+  `;
+
+  const grid = document.getElementById('grid');
+  try {
+    const enrollments = await listMyEnrollments(session.user.id);
+    if (!enrollments.length) {
+      renderEmptyState(grid, { icon: '📚', title: "You haven't enrolled yet", message: 'Browse the catalog to find your first course.' });
+    } else {
+      grid.innerHTML = enrollments.map((e) => `
+        <div class="card card-body">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <span class="badge ${statusBadgeClass(e.status)}" style="text-transform:capitalize">${e.status}</span>
+            <span style="font-size:0.75rem;color:var(--text-secondary)">${formatDate(e.created_at)}</span>
+          </div>
+          <h4 style="margin-top:12px">${escapeHTML(e.courses?.title ?? '')}</h4>
+          <p style="font-size:0.85rem">${escapeHTML(e.courses?.subjects?.name ?? '')}</p>
+          ${e.status === 'approved'
+            ? `<a href="/student/course-player.html?courseId=${e.course_id}" class="btn btn-dark btn-sm" style="margin-top:8px">Open Course</a>`
+            : e.status === 'pending'
+              ? `<a href="/student/payment-instructions.html" class="btn btn-outline btn-sm" style="margin-top:8px">View Payment Instructions</a>`
+              : ''}
+        </div>`).join('');
+    }
+  } catch {
+    renderErrorState(grid, 'Could not load your courses.');
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up — PassUp.LK</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/pages/auth.css">
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-visual">
+    <a href="/index.html" class="brand" style="color:#fff"><span class="brand__mark"></span><span>PassUp<span style="color:var(--color-primary)">.LK</span></span></a>
+    <p class="auth-visual__quote">"Join hundreds of students building real confidence in ICT — backed by our 100% cashback guarantee."</p>
+    <p style="color:#a3a3a3">100% Cashback Guarantee · O/L & A/L ICT</p>
+  </div>
+  <div class="auth-panel">
+    <div class="auth-card">
+      <div class="auth-card__head">
+        <h2>Create your account</h2>
+        <p>Start your ICT journey with PassUp.LK.</p>
+      </div>
+      <form id="signupForm" novalidate>
+        <div class="field">
+          <label for="fullName">Full Name</label>
+          <input class="input" type="text" id="fullName" required>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input class="input" type="email" id="email" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-group">
+            <input class="input" type="password" id="password" required>
+            <button type="button" class="input-group__action" id="togglePw" aria-label="Show password">👁</button>
+          </div>
+          <span class="field-hint">At least 8 characters, with a letter and a number.</span>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit" id="submitBtn">Create Account</button>
+      </form>
+      <p class="auth-foot">Already have an account? <a href="/login.html">Log in</a></p>
+    </div>
+  </div>
+</div>
+<script type="module">
+  import { signUp } from '/assets/js/services/auth.service.js';
+  import { redirectIfAuthenticated } from '/assets/js/utils/guards.js';
+  import { isValidEmail, isStrongPassword, isNonEmpty, applyFieldError, clearFieldError } from '/assets/js/utils/validators.js';
+  import { toastError, toastSuccess } from '/assets/js/utils/toast.js';
+
+  redirectIfAuthenticated();
+
+  document.getElementById('togglePw').addEventListener('click', () => {
+    const input = document.getElementById('password');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  });
+
+  document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fullName = document.getElementById('fullName');
+    const email = document.getElementById('email');
+    const password = document.getElementById('password');
+    [fullName, email, password].forEach(clearFieldError);
+
+    let valid = true;
+    if (!isNonEmpty(fullName.value)) { applyFieldError(fullName, 'Enter your full name.'); valid = false; }
+    if (!isValidEmail(email.value)) { applyFieldError(email, 'Enter a valid email.'); valid = false; }
+    if (!isStrongPassword(password.value)) { applyFieldError(password, 'Min 8 characters, with a letter and a number.'); valid = false; }
+    if (!valid) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = 'Creating account…';
+    try {
+      await signUp({ fullName: fullName.value.trim(), email: email.value.trim(), password: password.value });
+      document.querySelector('.auth-card').innerHTML = `
+        <div class="state-panel" style="padding:0">
+          <div class="state-panel__icon">📩</div>
+          <h3>Check your email</h3>
+          <p>We've sent a verification link to <strong>${email.value.trim()}</strong>. Click it, then come back and log in.</p>
+          <a href="/login.html" class="btn btn-primary" style="margin-top:20px">Go to Login</a>
+        </div>`;
+    } catch (err) {
+      toastError(err.message.includes('already registered') ? 'An account with this email already exists.' : err.message);
+      btn.disabled = false; btn.textContent = 'Create Account';
+    }
+  });
+</script>
+</body>
+</html>

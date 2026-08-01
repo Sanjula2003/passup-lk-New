@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Courses — PassUp.LK Teacher</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="stylesheet" href="/assets/css/pages/dashboard.css">
+</head>
+<body>
+<script type="module">
+  import { requireTeacher } from '/assets/js/utils/guards.js';
+  import { renderAppShell } from '/assets/js/components/app-shell.js';
+  import { listAllCoursesForTeacher, createCourse, updateCourse, deleteCourse } from '/assets/js/services/courses.service.js';
+  import { listSubjects } from '/assets/js/services/subjects.service.js';
+  import { escapeHTML, renderEmptyState, renderErrorState, qsa } from '/assets/js/utils/dom.js';
+  import { formatCurrencyLKR } from '/assets/js/utils/formatters.js';
+  import { toastSuccess, toastError } from '/assets/js/utils/toast.js';
+  import { confirmModal } from '/assets/js/components/modal.js';
+  import { isNonEmpty, applyFieldError, clearFieldError } from '/assets/js/utils/validators.js';
+
+  const auth = await requireTeacher();
+  if (!auth) throw new Error('redirecting');
+  const { profile } = auth;
+
+  const content = renderAppShell({ role: 'teacher', profile, activeHref: '/teacher/courses.html', pageTitle: 'Courses' });
+  content.innerHTML = `
+    <div class="page-head">
+      <h1>Courses</h1>
+      <button class="btn btn-primary" id="newCourseBtn">+ New Course</button>
+    </div>
+    <div class="grid grid-3" id="grid">${'<div class="skeleton" style="height:220px"></div>'.repeat(3)}</div>
+  `;
+
+  const grid = document.getElementById('grid');
+  let subjects = [];
+
+  async function load() {
+    try {
+      const [courses, subs] = await Promise.all([listAllCoursesForTeacher(), listSubjects()]);
+      subjects = subs;
+      if (!courses.length) return renderEmptyState(grid, { icon: '📚', title: 'No courses yet', message: 'Create your first course to get started.' });
+      grid.innerHTML = courses.map((c) => `
+        <div class="card card-body">
+          <div class="course-card__thumb" style="border-radius:10px;margin-bottom:12px">
+            ${c.thumbnail_url ? `<img src="${escapeHTML(c.thumbnail_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px" />` : `<span>${escapeHTML(c.subjects?.name ?? 'No thumbnail')}</span>`}
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <span class="badge badge-neutral">${escapeHTML(c.subjects?.name ?? '')}</span>
+            <span class="badge ${c.is_published ? 'badge-success' : 'badge-warning'}">${c.is_published ? 'Published' : 'Draft'}</span>
+          </div>
+          <h4 style="margin-top:12px">${escapeHTML(c.title)}</h4>
+          <p style="font-size:0.85rem">${formatCurrencyLKR(c.price)} · ${c.topics?.[0]?.count ?? 0} topics</p>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <a href="/teacher/course-edit.html?courseId=${c.id}" class="btn btn-dark btn-sm">Manage Content</a>
+            <button class="btn btn-outline btn-sm" data-action="edit" data-id="${c.id}">Edit Details</button>
+            <button class="btn btn-outline btn-sm" data-action="toggle" data-id="${c.id}" data-published="${c.is_published}">${c.is_published ? 'Unpublish' : 'Publish'}</button>
+            <button class="btn btn-danger btn-sm" data-action="delete" data-id="${c.id}">Delete</button>
+          </div>
+        </div>`).join('');
+
+      qsa('[data-action]').forEach((btn) => btn.addEventListener('click', () => handleAction(btn, courses)));
+    } catch {
+      renderErrorState(grid, 'Could not load courses.');
+    }
+  }
+
+  async function handleAction(btn, courses) {
+    const { action, id } = btn.dataset;
+    if (action === 'edit') {
+      const course = courses.find((c) => c.id === id);
+      openCourseModal(course);
+    }
+    if (action === 'toggle') {
+      try { await updateCourse(id, { is_published: btn.dataset.published !== 'true' }); toastSuccess('Updated.'); load(); }
+      catch (err) { toastError(err.message); }
+    }
+    if (action === 'delete') {
+      const ok = await confirmModal({ title: 'Delete course?', message: 'This deletes all its topics and lessons too. This cannot be undone.', confirmLabel: 'Delete', danger: true });
+      if (!ok) return;
+      try { await deleteCourse(id); toastSuccess('Course deleted.'); load(); }
+      catch (err) { toastError(err.message); }
+    }
+  }
+
+  document.getElementById('newCourseBtn').addEventListener('click', () => openCourseModal(null));
+
+  function openCourseModal(course) {
+    const isEdit = Boolean(course);
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal">
+        <h3>${isEdit ? 'Edit Course' : 'New Course'}</h3>
+        <form id="courseForm" style="margin-top:16px">
+          <div class="field"><label>Subject</label>
+            <select class="input" id="subjectId">${subjects.map((s) => `<option value="${s.id}" ${course?.subject_id === s.id ? 'selected' : ''}>${escapeHTML(s.name)}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>Title</label><input class="input" id="title" value="${course ? escapeHTML(course.title) : ''}" required></div>
+          <div class="field"><label>Slug (URL-friendly)</label><input class="input" id="slug" placeholder="e.g. ol-ict-foundations" value="${course ? escapeHTML(course.slug) : ''}" required></div>
+          <div class="field"><label>Description</label><textarea class="input" id="description" rows="3">${course ? escapeHTML(course.description ?? '') : ''}</textarea></div>
+          <div class="field"><label>Thumbnail Image URL</label>
+            <input class="input" id="thumbnailUrl" placeholder="https://…/image.jpg" value="${course ? escapeHTML(course.thumbnail_url ?? '') : ''}">
+            <span class="field-hint">Paste a public image URL — e.g. a Supabase Storage public link, or any hosted image. Shown on the course card and detail page. Leave blank for a plain color placeholder.</span>
+          </div>
+          <div id="thumbPreviewWrap"></div>
+          <div class="field"><label>Price (LKR)</label><input class="input" type="number" id="price" min="0" value="${course ? course.price : 0}"></div>
+          <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px">
+            <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
+            <button type="submit" class="btn btn-primary">${isEdit ? 'Save Changes' : 'Create Course'}</button>
+          </div>
+        </form>
+      </div>`;
+    document.body.appendChild(backdrop);
+    backdrop.querySelector('#cancelBtn').addEventListener('click', () => backdrop.remove());
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+
+    // Live thumbnail preview as the teacher types/pastes a URL.
+    const thumbInput = backdrop.querySelector('#thumbnailUrl');
+    const previewWrap = backdrop.querySelector('#thumbPreviewWrap');
+    function updatePreview() {
+      const url = thumbInput.value.trim();
+      previewWrap.innerHTML = url
+        ? `<img src="${escapeHTML(url)}" alt="Thumbnail preview" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;margin-bottom:16px" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'badge badge-danger',textContent:'Image failed to load — check the URL',style:'margin-bottom:16px'}))">`
+        : '';
+    }
+    thumbInput.addEventListener('input', updatePreview);
+    updatePreview();
+
+    backdrop.querySelector('#courseForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = backdrop.querySelector('#title');
+      const slug = backdrop.querySelector('#slug');
+      [title, slug].forEach(clearFieldError);
+      let valid = true;
+      if (!isNonEmpty(title.value)) { applyFieldError(title, 'Required.'); valid = false; }
+      if (!isNonEmpty(slug.value)) { applyFieldError(slug, 'Required.'); valid = false; }
+      if (!valid) return;
+
+      const payload = {
+        subject_id: backdrop.querySelector('#subjectId').value,
+        title: title.value.trim(),
+        slug: slug.value.trim().toLowerCase().replace(/\s+/g, '-'),
+        description: backdrop.querySelector('#description').value.trim(),
+        thumbnail_url: thumbInput.value.trim() || null,
+        price: Number(backdrop.querySelector('#price').value) || 0,
+      };
+
+      try {
+        if (isEdit) await updateCourse(course.id, payload);
+        else await createCourse(payload);
+        toastSuccess(isEdit ? 'Course updated.' : 'Course created.');
+        backdrop.remove();
+        load();
+      } catch (err) {
+        toastError(err.message || 'Could not save course.');
+      }
+    });
+  }
+
+  load();
+</script>
+</body>
+</html>

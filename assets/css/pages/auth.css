@@ -1,0 +1,27 @@
+/* Auth pages (login / signup / forgot / reset) ------------------------------ */
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr;
+  background: var(--color-neutral-50);
+}
+@media (min-width: 960px) { .auth-shell { grid-template-columns: 1fr 1fr; } }
+
+.auth-visual {
+  display: none;
+  background: linear-gradient(160deg, var(--color-secondary), #262626);
+  color: var(--color-white);
+  padding: var(--space-8);
+  flex-direction: column;
+  justify-content: space-between;
+}
+@media (min-width: 960px) { .auth-visual { display: flex; } }
+.auth-visual__quote { font-size: 1.5rem; font-weight: 700; max-width: 420px; line-height: 1.4; }
+
+.auth-panel { display: flex; align-items: center; justify-content: center; padding: var(--space-6); }
+.auth-card { width: 100%; max-width: 420px; }
+.auth-card__head { margin-bottom: var(--space-6); }
+.auth-foot { margin-top: var(--space-5); text-align: center; font-size: 0.9rem; color: var(--text-secondary); }
+.auth-foot a { font-weight: 700; color: var(--color-secondary); }
+.auth-divider { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-5) 0; color: var(--text-secondary); font-size: 0.85rem; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--color-neutral-200); }

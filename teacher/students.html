@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Students — PassUp.LK Teacher</title>
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/components.css">
+<link rel="stylesheet" href="/assets/css/layout.css">
+<link rel="stylesheet" href="/assets/css/pages/dashboard.css">
+</head>
+<body>
+<script type="module">
+  import { requireTeacher } from '/assets/js/utils/guards.js';
+  import { renderAppShell } from '/assets/js/components/app-shell.js';
+  import { supabase } from '/assets/js/config/supabase.js';
+  import { escapeHTML, renderEmptyState, renderErrorState, qsa } from '/assets/js/utils/dom.js';
+  import { statusBadgeClass, formatDate, initials } from '/assets/js/utils/formatters.js';
+  import { toastSuccess, toastError } from '/assets/js/utils/toast.js';
+  import { confirmModal } from '/assets/js/components/modal.js';
+
+  const auth = await requireTeacher();
+  if (!auth) throw new Error('redirecting');
+  const { profile } = auth;
+
+  const content = renderAppShell({ role: 'teacher', profile, activeHref: '/teacher/students.html', pageTitle: 'Students' });
+  content.innerHTML = `
+    <div class="page-head"><h1>Students</h1></div>
+    <div class="filter-bar">
+      <input class="input" id="searchBox" placeholder="Search by name or email…" style="max-width:320px">
+    </div>
+    <div class="card table-scroll">
+      <table class="data-table" id="table">
+        <thead><tr><th>Student</th><th>Email</th><th>Joined</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="5"><div class="skeleton" style="height:40px"></div></td></tr></tbody>
+      </table>
+    </div>
+  `;
+
+  let allStudents = [];
+  const tbody = document.getElementById('tbody');
+
+  function render(list) {
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="state-panel"><div class="state-panel__icon">🎓</div><h3>No students found</h3></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map((s) => `
+      <tr>
+        <td style="display:flex;align-items:center;gap:10px">
+          <div class="avatar-circle" style="width:32px;height:32px;font-size:0.75rem">${initials(s.full_name)}</div>
+          ${escapeHTML(s.full_name)}
+        </td>
+        <td>${escapeHTML(s.email)}</td>
+        <td>${formatDate(s.created_at)}</td>
+        <td><span class="badge ${statusBadgeClass(s.status)}" style="text-transform:capitalize">${s.status}</span></td>
+        <td>
+          <div style="display:flex;gap:6px">
+            ${s.status === 'active'
+              ? `<button class="btn btn-outline btn-sm" data-action="suspend" data-id="${s.id}">Suspend</button>`
+              : `<button class="btn btn-primary btn-sm" data-action="activate" data-id="${s.id}">Reactivate</button>`}
+            <button class="btn btn-danger btn-sm" data-action="delete" data-id="${s.id}">Delete</button>
+          </div>
+        </td>
+      </tr>`).join('');
+
+    qsa('[data-action]').forEach((btn) => btn.addEventListener('click', () => handleAction(btn.dataset.action, btn.dataset.id)));
+  }
+
+  async function load() {
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').eq('role', 'student').order('created_at', { ascending: false });
+      if (error) throw error;
+      allStudents = data;
+      render(allStudents);
+    } catch {
+      renderErrorState(tbody, 'Could not load students.');
+    }
+  }
+
+  async function handleAction(action, id) {
+    if (action === 'suspend' || action === 'activate') {
+      const status = action === 'suspend' ? 'suspended' : 'active';
+      const ok = await confirmModal({ title: `${action === 'suspend' ? 'Suspend' : 'Reactivate'} student?`, message: 'This immediately changes their account access.', danger: action === 'suspend' });
+      if (!ok) return;
+      const { error } = await supabase.from('profiles').update({ status }).eq('id', id);
+      if (error) return toastError(error.message);
+      toastSuccess('Student updated.');
+      load();
+    }
+    if (action === 'delete') {
+      // Deletes the profiles row (cascades to enrollments/progress via FK).
+      // Supabase's frontend client cannot delete the matching auth.users row
+      // — that requires the service_role key, which must never ship to the
+      // browser. To fully remove the login too, delete the user from the
+      // Supabase Dashboard (Authentication → Users) or a server-side Edge
+      // Function. See docs/SECURITY.md.
+      const ok = await confirmModal({ title: 'Delete student?', message: 'This permanently removes their profile and enrollment history. This cannot be undone.', confirmLabel: 'Delete', danger: true });
+      if (!ok) return;
+      const { error } = await supabase.from('profiles').delete().eq('id', id);
+      if (error) return toastError(error.message);
+      toastSuccess('Student deleted.');
+      load();
+    }
+  }
+
+  document.getElementById('searchBox').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    render(allStudents.filter((s) => s.full_name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)));
+  });
+
+  load();
+</script>
+</body>
+</html>

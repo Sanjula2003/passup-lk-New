@@ -7,7 +7,7 @@ shot), then run `sql/seed.sql`.
 ## Entity hierarchy
 
 ```
-subjects (O/L ICT, A/L ICT — fixed, never changes)
+subjects (level: O/L or A/L, name: Maths/Science/ICT/... — open catalog)
   └── courses
         └── topics
               └── lessons
@@ -18,7 +18,7 @@ subjects (O/L ICT, A/L ICT — fixed, never changes)
 | Table              | Purpose                                                                 |
 |---------------------|--------------------------------------------------------------------------|
 | `profiles`          | One row per user (1:1 with `auth.users`). `role` is `teacher` or `student`. Exactly one `teacher` row is allowed, enforced by trigger. |
-| `subjects`          | Fixed catalog: `O/L ICT`, `A/L ICT` only.                               |
+| `subjects`          | Open catalog. Each row has a `level` (`O/L` or `A/L`) and a `name` (e.g. `Maths`, `ICT`). Unique per `(level, name)` — the same subject name can exist at both levels. Managed from Teacher → Subjects; no code change needed to add one. |
 | `courses`           | Belongs to a subject. `is_published` controls public visibility.        |
 | `topics`            | Belongs to a course. Groups lessons.                                    |
 | `lessons`           | Belongs to a topic. Stores the YouTube video id (not full URL) and a PDF link. |

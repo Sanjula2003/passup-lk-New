@@ -38,7 +38,7 @@ export function renderSiteFooter(mountEl) {
         </div>
         <div class="footer-bottom">
           <span>© ${year} PassUp.LK. All rights reserved.</span>
-          <span>Made for Sri Lankan ICT students 🇱🇰</span>
+          <span>Made for Sri Lankan O/L & A/L students 🇱🇰</span>
         </div>
       </div>
     </footer>`;

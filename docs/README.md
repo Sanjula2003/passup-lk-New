@@ -2,8 +2,9 @@
 
 **Anyone Can Pass.**
 
-A premium, mobile-first Learning Management System built for Sri Lankan O/L
-and A/L ICT students, backed by a 100% cashback guarantee.
+A premium, mobile-first Learning Management System built to raise Sri Lankan
+GCE O/L and A/L pass rates — Maths, Science, ICT, and any other subject the
+teacher adds — backed by a 100% cashback guarantee.
 
 ## Stack
 

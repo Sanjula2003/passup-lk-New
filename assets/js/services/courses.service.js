@@ -1,12 +1,13 @@
 import { supabase } from '../config/supabase.js';
 
-export async function listPublishedCourses({ subjectSlug = null } = {}) {
+export async function listPublishedCourses({ subjectSlug = null, level = null } = {}) {
   let query = supabase
     .from('courses')
-    .select('*, subjects!inner(id, name, slug)')
+    .select('*, subjects!inner(id, name, slug, level)')
     .eq('is_published', true)
     .order('display_order');
   if (subjectSlug) query = query.eq('subjects.slug', subjectSlug);
+  if (level) query = query.eq('subjects.level', level);
   const { data, error } = await query;
   if (error) throw error;
   return data;
@@ -15,7 +16,7 @@ export async function listPublishedCourses({ subjectSlug = null } = {}) {
 export async function getCourseBySlug(slug) {
   const { data, error } = await supabase
     .from('courses')
-    .select('*, subjects(id, name, slug)')
+    .select('*, subjects(id, name, slug, level)')
     .eq('slug', slug)
     .single();
   if (error) throw error;
@@ -57,7 +58,7 @@ export async function getPublicCurriculum(courseId) {
 export async function listAllCoursesForTeacher() {
   const { data, error } = await supabase
     .from('courses')
-    .select('*, subjects(name), topics(count)')
+    .select('*, subjects(name, level), topics(count)')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;

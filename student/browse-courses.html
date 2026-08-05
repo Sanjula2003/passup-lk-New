@@ -27,18 +27,27 @@
         const content = renderAppShell({ role: 'student', profile, activeHref: '/student/browse-courses.html', pageTitle: 'All Courses' });
         content.innerHTML = `
     <div class="page-head"><h1>All Courses</h1></div>
-    <div class="filter-bar" id="filterBar"></div>
+    <div class="filter-bar" id="levelBar">
+      <button class="btn btn-dark btn-sm" data-level="">All Levels</button>
+      <button class="btn btn-outline btn-sm" data-level="O/L">O/L</button>
+      <button class="btn btn-outline btn-sm" data-level="A/L">A/L</button>
+    </div>
+    <div class="filter-bar" id="subjectBar"></div>
     <div class="grid grid-3" id="grid">${'<div class="skeleton" style="height:280px"></div>'.repeat(3)}</div>
   `;
 
         const grid = document.getElementById('grid');
-        const filterBar = document.getElementById('filterBar');
-        let activeFilter = '';
+        const levelBar = document.getElementById('levelBar');
+        const subjectBar = document.getElementById('subjectBar');
 
-        async function load() {
+        let allSubjects = [];
+        let activeLevel = '';
+        let activeSubjectSlug = '';
+
+        async function loadCourses() {
             grid.innerHTML = '<div class="skeleton" style="height:280px"></div>'.repeat(3);
             try {
-                const courses = await listPublishedCourses({ subjectSlug: activeFilter || null });
+                const courses = await listPublishedCourses({ subjectSlug: activeSubjectSlug || null, level: activeLevel || null });
                 if (!courses.length) {
                     return renderEmptyState(grid, { icon: '📚', title: 'No courses here yet', message: 'Check back soon — new courses are added regularly.' });
                 }
@@ -52,25 +61,47 @@
             }
         }
 
-        try {
-            const subjects = await listSubjects();
-            filterBar.innerHTML = `
-      <button class="btn btn-dark btn-sm" data-filter="">All</button>
-      ${subjects.map((s) => `<button class="btn btn-outline btn-sm" data-filter="${escapeHTML(s.slug)}">${escapeHTML(s.name)}</button>`).join('')}
+        function renderSubjectBar() {
+            const scoped = activeLevel ? allSubjects.filter((s) => s.level === activeLevel) : allSubjects;
+            if (activeSubjectSlug && !scoped.some((s) => s.slug === activeSubjectSlug)) activeSubjectSlug = '';
+
+            subjectBar.innerHTML = `
+      <button class="btn btn-sm ${!activeSubjectSlug ? 'btn-dark' : 'btn-outline'}" data-subject="">All Subjects</button>
+      ${scoped.map((s) => `<button class="btn btn-sm ${activeSubjectSlug === s.slug ? 'btn-dark' : 'btn-outline'}" data-subject="${escapeHTML(s.slug)}">${escapeHTML(s.name)}</button>`).join('')}
     `;
-            qsa('[data-filter]', filterBar).forEach((btn) => {
+            qsa('[data-subject]', subjectBar).forEach((btn) => {
                 btn.addEventListener('click', () => {
-                    activeFilter = btn.dataset.filter;
-                    qsa('[data-filter]', filterBar).forEach((b) => b.classList.replace('btn-dark', 'btn-outline'));
-                    btn.classList.replace('btn-outline', 'btn-dark');
-                    load();
+                    activeSubjectSlug = btn.dataset.subject;
+                    renderSubjectBar();
+                    loadCourses();
                 });
             });
-        } catch {
-            // Filter bar is a non-essential enhancement — course list still loads without it.
         }
 
-        load();
+        function wireLevelButtons() {
+            qsa('[data-level]', levelBar).forEach((btn) => {
+                btn.classList.toggle('btn-dark', btn.dataset.level === activeLevel);
+                btn.classList.toggle('btn-outline', btn.dataset.level !== activeLevel);
+                btn.addEventListener('click', () => {
+                    activeLevel = btn.dataset.level;
+                    qsa('[data-level]', levelBar).forEach((b) => {
+                        b.classList.toggle('btn-dark', b === btn);
+                        b.classList.toggle('btn-outline', b !== btn);
+                    });
+                    renderSubjectBar();
+                    loadCourses();
+                });
+            });
+        }
+
+        try {
+            allSubjects = await listSubjects();
+        } catch {
+            // Subject filter is a non-essential enhancement — course list still loads without it.
+        }
+        wireLevelButtons();
+        renderSubjectBar();
+        loadCourses();
     </script>
 </body>
 

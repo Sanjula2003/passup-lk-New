@@ -9,7 +9,7 @@ export function renderSiteFooter(mountEl) {
               <span class="brand__mark">P</span>
               <span>PassUp<span style="color:var(--color-primary)">.LK</span></span>
             </div>
-            <p>Premium ICT learning for O/L and A/L students in Sri Lanka. Anyone Can Pass.</p>
+            <p>Premium learning for O/L and A/L students in Sri Lanka. Anyone Can Pass.</p>
           </div>
           <div>
             <h4>Explore</h4>

@@ -15,12 +15,13 @@ const STUDENT_NAV = [
 
 const TEACHER_NAV = [
   { href: '/teacher/dashboard.html', label: 'Dashboard', icon: '🏠' },
+  { href: '/teacher/subjects.html', label: 'Subjects', icon: '🚪' },
   { href: '/teacher/courses.html', label: 'Courses', icon: '📚' },
   { href: '/teacher/enrollments.html', label: 'Enrollments', icon: '📝' },
   { href: '/teacher/students.html', label: 'Students', icon: '🎓' },
   { href: '/teacher/analytics.html', label: 'Analytics', icon: '📊' },
-  { href: '/teacher/settings.html', label: 'Settings', icon: '⚙️' },
-  { href: '/index.html', label: 'View Site', icon: '🚪', id: 'logoutBtn' }
+  { href: '/teacher/settings.html', label: 'Settings', icon: '⚙️' }
+  
 ];
 
 // Bottom nav only shows the 4 most important items — mobile space is tight.

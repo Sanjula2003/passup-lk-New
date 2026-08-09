@@ -50,7 +50,11 @@
     } else {
       continueList.innerHTML = approved.slice(0, 3).map((e) => `
         <a href="/student/course-player.html?courseId=${e.course_id}" class="card card-hover continue-card">
-          <div class="continue-card__thumb"></div>
+          <div class="continue-card__thumb">
+            ${e.courses?.thumbnail_url
+          ? `<img src="${escapeHTML(e.courses.thumbnail_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" />`
+          : `<span>${escapeHTML(e.courses?.subjects?.name ?? 'Course')}</span>`}
+          </div>
           <div class="continue-card__body">
             <strong>${escapeHTML(e.courses?.title ?? '')}</strong>
             <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:4px">${escapeHTML(e.courses?.subjects?.name ?? '')}</div>

@@ -81,6 +81,12 @@
   }
 }
 
+@media (max-width: 480px) {
+  .logo_text {
+    display: none;
+  }
+}
+
 .mobile-menu {
   display: none;
   flex-direction: column;

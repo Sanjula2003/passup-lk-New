@@ -26,7 +26,7 @@ export async function renderSiteHeader(mountEl, activeHref = '') {
       <div class="container site-header__row">
         <a href="/index.html" class="brand">
           <span class="brand__mark">P</span>
-          <span>PassUp<span style="color:var(--color-primary-dark)">.LK</span></span>
+          <span class="logo_text">Passup<span class="logo_text" style="color:var(--color-primary-dark)">.LK</span></span>
         </a>
         <nav class="nav-links" aria-label="Primary">
           ${NAV_ITEMS.map((i) => linkHTML(i.href, i.label)).join('')}

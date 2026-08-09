@@ -21,3 +21,56 @@
 .pay-steps { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-4); }
 .pay-step { display: flex; gap: var(--space-3); }
 .pay-step__num { width: 28px; height: 28px; border-radius: 50%; background: var(--color-primary); color: var(--color-secondary); font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+
+/* My Courses card ----------------------------------------------------------- */
+
+.my-course-card {
+    display: flex;
+    gap: var(--space-4);
+    align-items: flex-start;
+}
+
+.my-course-card__thumb {
+    width: 180px;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-sm);
+    background: var(--color-primary-light);
+    flex-shrink: 0;
+    overflow: hidden;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.my-course-card__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.my-course-card__thumb span {
+    font-weight: 700;
+    text-align: center;
+    padding: 10px;
+}
+
+.my-course-card__content {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 700px) {
+    .my-course-card {
+        flex-direction: column;
+    }
+
+    .my-course-card__thumb {
+        width: 100%;
+    }
+
+    .my-course-card__content {
+        width: 100%;
+    } }

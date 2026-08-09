@@ -33,13 +33,34 @@
       renderEmptyState(grid, { icon: '📚', title: "You haven't enrolled yet", message: 'Browse the catalog to find your first course.' });
     } else {
       grid.innerHTML = enrollments.map((e) => `
-        <div class="card card-body">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <span class="badge ${statusBadgeClass(e.status)}" style="text-transform:capitalize">${e.status}</span>
-            <span style="font-size:0.75rem;color:var(--text-secondary)">${formatDate(e.created_at)}</span>
-          </div>
-          <h4 style="margin-top:12px">${escapeHTML(e.courses?.title ?? '')}</h4>
-          <p style="font-size:0.85rem">${escapeHTML(e.courses?.subjects?.name ?? '')}</p>
+          <div class="card card-body my-course-card">
+
+            <div class="my-course-card__thumb">
+              ${e.courses?.thumbnail_url
+          ? `<img src="${escapeHTML(e.courses.thumbnail_url)}" alt="${escapeHTML(e.courses?.title ?? 'Course')}" />`
+          : `<span>${escapeHTML(e.courses?.subjects?.name ?? 'Course')}</span>`
+        }
+            </div>
+  
+            <div class="my-course-card__content">
+  
+              <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <span class="badge ${statusBadgeClass(e.status)}" style="text-transform:capitalize">
+                  ${e.status}
+                </span>
+  
+                <span style="font-size:0.75rem;color:var(--text-secondary)">
+                  ${formatDate(e.created_at)}
+                </span>
+              </div>
+  
+              <h4 style="margin-top:12px">
+                ${escapeHTML(e.courses?.title ?? '')}
+              </h4>
+  
+              <p style="font-size:0.85rem">
+                ${escapeHTML(e.courses?.subjects?.name ?? '')}
+              </p>
           ${e.status === 'approved'
             ? `<a href="/student/course-player.html?courseId=${e.course_id}" class="btn btn-dark btn-sm" style="margin-top:8px">Open Course</a>`
             : e.status === 'pending'

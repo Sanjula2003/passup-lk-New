@@ -50,7 +50,7 @@
             ${c.thumbnail_url ? `<img src="${escapeHTML(c.thumbnail_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px" />` : `<span>${escapeHTML(c.subjects?.name ?? 'No thumbnail')}</span>`}
           </div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <span class="badge badge-neutral">${escapeHTML(c.subjects?.level ? `${c.subjects.level} • ${c.subjects.name}` : c.subjects?.name ?? '')}</span>
+            <span class="badge badge-neutral">${escapeHTML(c.subjects?.name ?? '')}</span>
             <span class="badge ${c.is_published ? 'badge-success' : 'badge-warning'}">${c.is_published ? 'Published' : 'Draft'}</span>
           </div>
           <h4 style="margin-top:12px">${escapeHTML(c.title)}</h4>
@@ -98,13 +98,7 @@
         <h3>${isEdit ? 'Edit Course' : 'New Course'}</h3>
         <form id="courseForm" style="margin-top:16px">
           <div class="field"><label>Subject</label>
-            <select class="input" id="subjectId">
-              ${['O/L', 'A/L'].map((level) => {
-        const group = subjects.filter((s) => s.level === level);
-        if (!group.length) return '';
-        return `<optgroup label="${level}">${group.map((s) => `<option value="${s.id}" ${course?.subject_id === s.id ? 'selected' : ''}>${escapeHTML(s.name)}</option>`).join('')}</optgroup>`;
-      }).join('')}
-            </select>
+            <select class="input" id="subjectId">${subjects.map((s) => `<option value="${s.id}" ${course?.subject_id === s.id ? 'selected' : ''}>${escapeHTML(s.name)}</option>`).join('')}</select>
           </div>
           <div class="field"><label>Title</label><input class="input" id="title" value="${course ? escapeHTML(course.title) : ''}" required></div>
           <div class="field"><label>Slug (URL-friendly)</label><input class="input" id="slug" placeholder="e.g. ol-ict-foundations" value="${course ? escapeHTML(course.slug) : ''}" required></div>

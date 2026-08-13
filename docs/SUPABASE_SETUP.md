@@ -22,12 +22,19 @@ In the Supabase Dashboard, open **SQL Editor** and run the files in
 0005_rls_policies.sql
 0006_subject_catalog_rework.sql
 0007_public_curriculum_preview.sql
+0008_restore_fixed_ol_al_ict_catalog.sql
 ```
 
 Or paste the entire contents of `/sql/schema_full.sql` in one go — it's the
 same files concatenated in order. Every migration is written defensively
 (`IF EXISTS`/`IF NOT EXISTS`/`CREATE OR REPLACE`), so re-running the whole
 file is safe even if some of it already ran in an earlier session.
+
+**If this is an existing project** that already has data (i.e. you're not
+setting up from scratch), you only need to run the migrations you haven't
+run yet — most likely just `0008_restore_fixed_ol_al_ict_catalog.sql` on its
+own. It has a built-in safety check: it refuses to run (with a clear error,
+no data loss) if any subject other than O/L ICT / A/L ICT still exists.
 
 ## 3. Configure Auth
 
@@ -43,12 +50,10 @@ file is safe even if some of it already ran in an earlier session.
 4. Confirm **"Confirm email"** is turned ON under Authentication → Settings
    — the spec requires email verification before login.
 
-## 4. Seed a starter subject catalog
+## 4. Seed the fixed subject catalog
 
 Still in the SQL Editor, run `/sql/seed.sql`. This inserts:
-- Two starter subjects: O/L ICT and A/L ICT — just a starting point. Add,
-  edit, or remove subjects anytime from Teacher → Subjects; nothing about
-  the catalog is fixed.
+- The two fixed subjects: `O/L ICT` and `A/L ICT`
 - Default site settings (WhatsApp number, bank details, cashback policy
   text) — placeholder values you should edit afterward from the Teacher
   Settings page, or directly in the `settings` table.

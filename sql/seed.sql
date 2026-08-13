@@ -4,22 +4,16 @@
 -- Run this ONCE after the migrations, and after your teacher account has
 -- signed up normally through the app's signup page (so a matching row
 -- already exists in auth.users / public.profiles).
---
--- NOTE: if you already ran an earlier version of this file (before the
--- subjects catalog became open-ended in migration 0006), you do NOT need to
--- re-run this section — your existing O/L ICT / A/L ICT rows were converted
--- automatically. This is only for a brand-new project.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- 1. Starter subject catalog — a starting point, not a limit. Add, edit, or
---    remove subjects anytime from Teacher → Subjects; nothing here is fixed.
+-- 1. Fixed subject catalog — only these two rows should ever exist.
 -- ----------------------------------------------------------------------------
-insert into public.subjects (level, name, slug, description, display_order)
+insert into public.subjects (name, slug, description, display_order)
 values
-  ('O/L', 'ICT', 'ol-ict', 'Ordinary Level Information & Communication Technology', 1),
-  ('A/L', 'ICT', 'al-ict', 'Advanced Level Information & Communication Technology', 2)
-on conflict (level, name) do nothing;
+  ('O/L ICT', 'ol-ict', 'Ordinary Level Information & Communication Technology', 1),
+  ('A/L ICT', 'al-ict', 'Advanced Level Information & Communication Technology', 2)
+on conflict (name) do nothing;
 
 -- ----------------------------------------------------------------------------
 -- 2. Default site settings — edit values to match the real teacher/business

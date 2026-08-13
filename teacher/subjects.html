@@ -15,157 +15,45 @@
   <script type="module">
     import { requireTeacher } from '/assets/js/utils/guards.js';
     import { renderAppShell } from '/assets/js/components/app-shell.js';
-    import { listSubjects, createSubject, updateSubject, deleteSubject } from '/assets/js/services/subjects.service.js';
-    import { escapeHTML, renderEmptyState, renderErrorState } from '/assets/js/utils/dom.js';
+    import { listSubjects, updateSubject } from '/assets/js/services/subjects.service.js';
+    import { escapeHTML } from '/assets/js/utils/dom.js';
     import { toastSuccess, toastError } from '/assets/js/utils/toast.js';
-    import { isNonEmpty, applyFieldError, clearFieldError } from '/assets/js/utils/validators.js';
-    import { confirmModal } from '/assets/js/components/modal.js';
 
     const auth = await requireTeacher();
     if (!auth) throw new Error('redirecting');
     const { profile } = auth;
 
     const content = renderAppShell({ role: 'teacher', profile, activeHref: '/teacher/subjects.html', pageTitle: 'Subjects' });
+    content.innerHTML = `<div class="skeleton" style="height:280px"></div>`;
+
+    // Subjects are a fixed catalog (O/L ICT, A/L ICT only — enforced by a DB
+    // CHECK constraint). This page only lets the teacher edit each subject's
+    // description; there is intentionally no "add subject" action.
+    const subjects = await listSubjects();
+
     content.innerHTML = `
-    <div class="page-head">
-      <div>
-        <h1>Subjects</h1>
-        <p style="color:var(--text-secondary);font-size:0.9rem;margin-top:4px">Add any O/L or A/L subject — Maths, Science, ICT, SFT, and so on.</p>
-      </div>
-      <button class="btn btn-primary" id="newSubjectBtn">+ Add Subject</button>
+    <div class="page-head"><h1>Subjects</h1></div>
+    <div class="grid grid-2">
+      ${subjects.map((s) => `
+        <div class="card card-body">
+          <h3>${escapeHTML(s.name)}</h3>
+          <form data-id="${s.id}" class="subjectForm" style="margin-top:12px">
+            <div class="field"><label>Description</label><textarea class="input" rows="3">${escapeHTML(s.description ?? '')}</textarea></div>
+            <button class="btn btn-primary btn-sm" type="submit">Save</button>
+          </form>
+        </div>`).join('')}
     </div>
-    <div id="levelSections"><div class="skeleton" style="height:200px"></div></div>
   `;
 
-    const levelSections = document.getElementById('levelSections');
-
-    function subjectCard(s) {
-      return `
-      <div class="card card-body">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-          <h4>${escapeHTML(s.name)}</h4>
-          <div style="display:flex;gap:6px;flex-shrink:0">
-            <button class="btn btn-outline btn-sm" data-action="edit" data-id="${s.id}">Edit</button>
-            <button class="btn btn-danger btn-sm" data-action="delete" data-id="${s.id}">Delete</button>
-          </div>
-        </div>
-        <p style="font-size:0.85rem;margin-top:8px">${escapeHTML(s.description ?? 'No description yet.')}</p>
-        <span class="badge badge-neutral" style="margin-top:8px">/${escapeHTML(s.slug)}</span>
-      </div>`;
-    }
-
-    async function load() {
-      let subjects;
-      try {
-        subjects = await listSubjects();
-      } catch {
-        return renderErrorState(levelSections, 'Could not load subjects.');
-      }
-
-      if (!subjects.length) {
-        return renderEmptyState(levelSections, { icon: '📖', title: 'No subjects yet', message: 'Add your first subject to get started.' });
-      }
-
-      const ol = subjects.filter((s) => s.level === 'O/L');
-      const al = subjects.filter((s) => s.level === 'A/L');
-
-      levelSections.innerHTML = `
-      <h3 style="margin-bottom:16px">O/L Subjects</h3>
-      <div class="grid grid-3" style="margin-bottom:40px">
-        ${ol.length ? ol.map(subjectCard).join('') : '<p style="color:var(--text-secondary);font-size:0.9rem">No O/L subjects yet.</p>'}
-      </div>
-      <h3 style="margin-bottom:16px">A/L Subjects</h3>
-      <div class="grid grid-3">
-        ${al.length ? al.map(subjectCard).join('') : '<p style="color:var(--text-secondary);font-size:0.9rem">No A/L subjects yet.</p>'}
-      </div>
-    `;
-
-      levelSections.querySelectorAll('[data-action="edit"]').forEach((btn) => {
-        const subject = subjects.find((s) => s.id === btn.dataset.id);
-        btn.addEventListener('click', () => openSubjectModal(subject));
-      });
-      levelSections.querySelectorAll('[data-action="delete"]').forEach((btn) => {
-        btn.addEventListener('click', () => handleDelete(btn.dataset.id));
-      });
-    }
-
-    async function handleDelete(id) {
-      const ok = await confirmModal({
-        title: 'Delete subject?',
-        message: 'This also deletes every course, topic, and lesson under this subject, and all related enrollment/payment history. This cannot be undone.',
-        confirmLabel: 'Delete',
-        danger: true,
-      });
-      if (!ok) return;
-      try {
-        await deleteSubject(id);
-        toastSuccess('Subject deleted.');
-        load();
-      } catch (err) {
-        toastError(err.message || 'Could not delete subject.');
-      }
-    }
-
-    function slugify(text) {
-      return text.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    }
-
-    function openSubjectModal(subject) {
-      const isEdit = Boolean(subject);
-      const backdrop = document.createElement('div');
-      backdrop.className = 'modal-backdrop';
-      backdrop.innerHTML = `
-      <div class="modal">
-        <h3>${isEdit ? 'Edit Subject' : 'Add Subject'}</h3>
-        <form id="subjectForm" style="margin-top:16px">
-          <div class="field"><label>Level</label>
-            <select class="input" id="level">
-              <option value="O/L" ${subject?.level === 'O/L' ? 'selected' : ''}>O/L</option>
-              <option value="A/L" ${subject?.level === 'A/L' ? 'selected' : ''}>A/L</option>
-            </select>
-          </div>
-          <div class="field"><label>Subject Name</label><input class="input" id="name" placeholder="e.g. Mathematics" value="${subject ? escapeHTML(subject.name) : ''}" required></div>
-          <div class="field"><label>URL Slug</label><input class="input" id="slug" placeholder="auto-generated from name" value="${subject ? escapeHTML(subject.slug) : ''}">
-            <span class="field-hint">Used in course catalog links. Leave blank to auto-generate.</span>
-          </div>
-          <div class="field"><label>Description</label><textarea class="input" id="description" rows="3">${subject ? escapeHTML(subject.description ?? '') : ''}</textarea></div>
-          <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px">
-            <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
-            <button type="submit" class="btn btn-primary">${isEdit ? 'Save Changes' : 'Add Subject'}</button>
-          </div>
-        </form>
-      </div>`;
-      document.body.appendChild(backdrop);
-      backdrop.querySelector('#cancelBtn').addEventListener('click', () => backdrop.remove());
-      backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
-
-      backdrop.querySelector('#subjectForm').addEventListener('submit', async (e) => {
+    document.querySelectorAll('.subjectForm').forEach((form) => {
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const nameInput = backdrop.querySelector('#name');
-        clearFieldError(nameInput);
-        if (!isNonEmpty(nameInput.value)) { applyFieldError(nameInput, 'Required.'); return; }
-
-        const level = backdrop.querySelector('#level').value;
-        const name = nameInput.value.trim();
-        const rawSlug = backdrop.querySelector('#slug').value.trim();
-        const slug = rawSlug ? slugify(rawSlug) : slugify(`${level}-${name}`);
-        const description = backdrop.querySelector('#description').value.trim();
-
         try {
-          if (isEdit) await updateSubject(subject.id, { level, name, slug, description });
-          else await createSubject({ level, name, slug, description });
-          toastSuccess(isEdit ? 'Subject updated.' : 'Subject added.');
-          backdrop.remove();
-          load();
-        } catch (err) {
-          toastError(err.message || 'Could not save subject — check the slug is unique.');
-        }
+          await updateSubject(form.dataset.id, { description: form.querySelector('textarea').value.trim() });
+          toastSuccess('Subject updated.');
+        } catch (err) { toastError(err.message); }
       });
-    }
-
-    document.getElementById('newSubjectBtn').addEventListener('click', () => openSubjectModal(null));
-
-    load();
+    });
   </script>
 </body>
 

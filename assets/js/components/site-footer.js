@@ -9,7 +9,7 @@ export function renderSiteFooter(mountEl) {
               <span class="brand__mark">P</span>
               <span>PassUp<span style="color:var(--color-primary)">.LK</span></span>
             </div>
-            <p>Premium learning for O/L and A/L students in Sri Lanka. Anyone Can Pass.</p>
+            <p>Premium learning for O/L and A/L ICT students in Sri Lanka. Anyone Can Pass.</p>
           </div>
           <div>
             <h4>Explore</h4>
@@ -38,7 +38,7 @@ export function renderSiteFooter(mountEl) {
         </div>
         <div class="footer-bottom">
           <span>© ${year} PassUp.LK. All rights reserved.</span>
-          <span>Made for Sri Lankan O/L & A/L students 🇱🇰</span>
+          <span>Made for Sri Lankan ICT students 🇱🇰</span>
         </div>
       </div>
     </footer>`;

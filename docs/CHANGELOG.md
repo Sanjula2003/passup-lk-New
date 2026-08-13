@@ -3,6 +3,20 @@
 All notable changes to PassUp.LK are documented here.
 This project follows [Keep a Changelog](https://keepachangelog.com/) style.
 
+## [1.1.0] — Restore fixed O/L ICT / A/L ICT catalog
+
+### Changed
+- Reverted the brief experiment with an open, multi-subject catalog
+  (subjects with any name at any level, e.g. Maths, Science, SFT) back to
+  the original fixed catalog: exactly `O/L ICT` and `A/L ICT`, enforced by
+  a database `CHECK` constraint.
+- Teacher → Subjects is edit-only again (description field only) — no
+  add/delete subject actions.
+- Course browsing (public catalog and student "All Courses") back to a
+  single-tier subject filter instead of level+subject.
+- Landing page, About page, and auth page copy reverted to ICT-specific
+  wording.
+
 ## [1.0.0] — Initial Release
 
 ### Added
